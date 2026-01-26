@@ -1,0 +1,16 @@
+source_file_path:
+- src/three_interpolate_cuda.hip
+target_kernel_functions:
+- three_interpolate
+compile_command:
+- python3 test_three_interpolate.py
+correctness_command:
+- python3 test_three_interpolate.py
+performance_command:
+- python3 test_three_interpolate.py
+task_type: hip2hip
+task_result_template: null
+prompt:
+  source_code: null
+  instructions: null
+  cheatsheet: null

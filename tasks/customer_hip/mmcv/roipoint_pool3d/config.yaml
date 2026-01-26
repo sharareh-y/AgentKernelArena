@@ -1,0 +1,16 @@
+source_file_path:
+- src/roipoint_pool3d_kernel.hip
+target_kernel_functions:
+- roipoint_pool3d
+compile_command:
+- python3 test_roipoint_pool3d.py
+correctness_command:
+- python3 test_roipoint_pool3d.py
+performance_command:
+- python3 test_roipoint_pool3d.py
+task_type: hip2hip
+task_result_template: null
+prompt:
+  source_code: null
+  instructions: null
+  cheatsheet: null

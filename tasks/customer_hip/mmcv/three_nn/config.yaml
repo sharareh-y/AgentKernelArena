@@ -1,0 +1,16 @@
+source_file_path:
+- src/three_nn_cuda.hip
+target_kernel_functions:
+- three_nn
+compile_command:
+- python3 test_three_nn.py
+correctness_command:
+- python3 test_three_nn.py
+performance_command:
+- python3 test_three_nn.py
+task_type: hip2hip
+task_result_template: null
+prompt:
+  source_code: null
+  instructions: null
+  cheatsheet: null

@@ -1,0 +1,3 @@
+max_iterations: 3
+timeout_seconds: 600
+python_path: /root/AgentKernelArena/.venv/bin/python3

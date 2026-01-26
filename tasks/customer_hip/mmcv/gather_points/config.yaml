@@ -1,0 +1,16 @@
+source_file_path:
+- src/gather_points_cuda.hip
+target_kernel_functions:
+- gather_points
+compile_command:
+- python3 test_gather_points.py
+correctness_command:
+- python3 test_gather_points.py
+performance_command:
+- python3 test_gather_points.py
+task_type: hip2hip
+task_result_template: task_result_template_double_output_perf.yaml
+prompt:
+  source_code: null
+  instructions: null
+  cheatsheet: null

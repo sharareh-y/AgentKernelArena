@@ -1,0 +1,16 @@
+source_file_path:
+- src/assign_score_withk_cuda.hip
+target_kernel_functions:
+- assign_score_withk
+compile_command:
+- python3 test_assign_score_withk.py
+correctness_command:
+- python3 test_assign_score_withk.py
+performance_command:
+- python3 test_assign_score_withk.py
+task_type: hip2hip
+task_result_template: task_result_template_double_output.yaml
+prompt:
+  source_code: null
+  instructions: null
+  cheatsheet: null

@@ -1,0 +1,16 @@
+source_file_path:
+- src/knn_cuda.hip
+target_kernel_functions:
+- knn
+compile_command:
+- python3 test_knn.py
+correctness_command:
+- python3 test_knn.py
+performance_command:
+- python3 test_knn.py
+task_type: hip2hip
+task_result_template: task_result_template_triple_output_perf.yaml
+prompt:
+  source_code: null
+  instructions: null
+  cheatsheet: null

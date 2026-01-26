@@ -1,0 +1,4 @@
+MI300:
+  hip: src/prompts/cheatsheet/MI300_hip_kernel_cheatsheet.md
+  triton: src/prompts/cheatsheet/MI300_triton_kernel_cheatsheet.md
+
