@@ -1,24 +1,20 @@
-# AgentKernelArena: AI Agent Evaluation for GPU Kernel Optimization
+# AgentKernelArena: Competitive Arena for GPU Kernel Optimization Agents
 
-AgentKernelArena is an AI agent evaluation framework and harness that makes it easy for you to compare LLMs and agents -- such as Cursor, Claude Code, or OpenEvolve (GEAK) -- on important GPU kernel optimization tasks. Automatically benchmark you agents against GPU programming challenges. Get metrics that are critical to measuring the goodness of generated kernels: compilation success (it runs), correctness (it runs correctly), and GPU performance (it runs faster than the baseline). Built by AMD's AI Group (AIG).
+AgentKernelArena is a standardized evaluation arena built by AMD's AI Group (AIG) to measure how well AI coding agents perform on real GPU kernel optimization tasks. It provides an end-to-end, siloed benchmarking environment where LLM-powered agents (Cursor Agent, Claude Code, Codex, SWE-agent, GEAK, and custom agents) are evaluated side-by-side on the same kernel tasks using objective and reproducible metrics.
 
-## Overview
+## Overview & Features
 
-AgentKernelArena enables systematic evaluation of AI agents on GPU kernel optimization tasks by:
-- Supporting multiple agent architectures (cursor, claude_code, swe-agent, single_llm_call)
-- Providing isolated workspaces for reproducible testing
-- Automating compilation, correctness testing, and performance profiling
-- Generating comprehensive evaluation reports with quantitative scoring
-
-## Features
-
-- **Multi-Agent Support**: Cursor, Claude Code, SWE-agent, OpenEvolve (GEAK), single LLM calls, and custom agents
-- **Multiple LLM Providers**: Integration with OpenAI (GPT-5), Anthropic Claude (Opus 4, Sonnet 4.5), OpenRouter, and vLLM
-- **Task Categories**: Support for HIP, Triton (TritonBench, ROCmBench), and PyTorch kernel optimization tasks
-- **Automated Scoring**: Cumulative scoring based on compilation (20 points), correctness (100 points), and speedup (ratio × 100 points)
+AgentKernelArena enables systematic evaluation of AI agents on GPU kernel optimization tasks by combining:
+- **Multi-Agent Arena**: Cursor, Claude Code, SWE-agent, OpenEvolve (GEAK), single LLM calls (Codex/others), and custom agents
+- **Multi-Model Support**: OpenAI (GPT-5), Anthropic Claude (Opus 4.5, Sonnet 4.5), and other models via OpenRouter or vLLM
+- **Task Categories**: HIP (ROCm examples, rocPRIM, customer HIP), Triton (TritonBench, ROCmBench), and Torch2HIP conversions
+- **Real Metrics**: Automated evaluation of compilation success, correctness, and real GPU performance speedups
+- **Designed for Fair Comparison**: Standardized tasks, environments, prompts, and scoring for leaderboard-style evaluation
 - **Workspace Isolation**: Each task runs in a timestamped duplicate workspace for reproducibility
-- **Comprehensive Logging**: Detailed logs with timestamps, prompts, and results for every task execution
+- **Comprehensive Logging**: Detailed logs with timestamps, prompts, outputs, and results for every task execution
 - **Flexible Configuration**: YAML-based configuration for tasks, agents, and LLM parameters
+
+AgentKernelArena is actively under development. Upcoming releases will publish detailed evaluation results comparing agent performance across multiple task categories, using standardized correctness and performance scores. As AI coding agents rapidly improve, we need more than cherry-picked demos -- especially in specialized domains like GPU programming. AgentKernelArena is built to answer a simple, critical question: which agents actually deliver real performance gains on real kernels?
 
 ## Architecture
 
@@ -33,18 +29,26 @@ AgentKernelArena/
 │   ├── preprocessing.py         # Workspace setup and environment checks
 │   ├── prompt_builder.py        # Task prompt construction
 │   ├── postprocessing.py        # Result analysis and report generation
-│   ├── scoring.py               # Scoring logic for evaluation metrics
-│   └── tasks.py                 # Task discovery and registration
+│   ├── score.py                  # Scoring logic for evaluation metrics
+│   ├── tasks.py                 # Task discovery and registration
+│   └── utils/
+│       └── report_generation.py # Aggregate report analysis utilities
 ├── agents/
 │   ├── cursor/                  # Cursor agent integration
 │   ├── claude_code/             # Claude Code agent integration
+│   ├── SWE_agent/               # SWE-agent integration
+│   ├── openevolve/              # OpenEvolve (GEAK) integration
+│   ├── geak_optimagentv2/        # GEAK OptimAgent v2 integration
+│   ├── geak_hip/                 # GEAK HIP integration
+│   ├── geak_ourllm_kernel2kernel/ # GEAK OurLLM kernel-to-kernel integration
 │   ├── single_llm_call/         # Single LLM call implementation
 │   └── __init__.py              # Agent registry
 └── tasks/                       # Task definitions
     ├── rocm-examples/           # ROCm example kernels
+    ├── rocprim/                 # rocPRIM kernels
     ├── customer_hip/            # Custom HIP kernels
     ├── triton/                  # Triton benchmark kernels
-    └── customer_pytorch/        # Custom PyTorch implementations
+    └── torch2hip/               # Torch2HIP conversion tasks
 ```
 
 ### Execution Flow
@@ -53,7 +57,7 @@ AgentKernelArena/
 2. **Agent Registration**: Dynamically load agent launcher, prompt builder, and post-processing handler based on AgentType enum
 3. **Task Discovery**: Scan `tasks/` directory for task configurations matching specified categories
 4. **Workspace Setup**: Create isolated workspace with timestamp for each task
-5. **Prompt Building**: Construct task-specific prompts from config, source code, and instructions
+5. **Prompt Building**: Construct task-specific prompts from config, source code, and instructions/cheatsheets
 6. **Agent Execution**: Launch agent in workspace with constructed prompt
 7. **Result Collection**: Save agent output, logs, and modified code
 8. **Post-Processing**: Run compilation, correctness tests, performance profiling, and scoring
@@ -63,7 +67,7 @@ AgentKernelArena/
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.12+
 - ROCm toolkit (for HIP kernels): `hipcc`, `rocprof-compute`
 - Triton (for Triton kernels)
 - Git
@@ -83,12 +87,10 @@ export OPENAI_API_KEY="your_openai_key"
 export ANTHROPIC_API_KEY="your_anthropic_key"
 export OPENROUTER_API_KEY="your_openrouter_key"
 
-# Install agent CLIs (if using cursor or claude_code)
+# Install agent CLIs (using claude_code as an example)
 # For Claude Code:
 npm install -g @anthropic-ai/claude-code
 
-# For Cursor:
-# Follow cursor-agent installation instructions
 ```
 
 ## Usage
@@ -100,7 +102,7 @@ npm install -g @anthropic-ai/claude-code
 ```yaml
 # Select agent type
 agent:
-  template: claude_code  # Options: cursor, claude_code, swe-agent, single_llm_call, geak
+  template: claude_code  # Options: cursor, claude_code, swe_agent, single_llm_call, openevolve, geak_optimagentv2, geak_hip, geak_ourllm_kernel2kernel
   max_iterations: 5
 
 # Specify tasks to run
@@ -113,8 +115,6 @@ target_gpu_model: MI300
 log_directory: logs
 workspace_directory_prefix: workspace
 
-# Select LLM provider
-provider: claude  # Options: openai, claude, openrouter, vllm
 ```
 
 2. **Run evaluation**:
@@ -131,8 +131,10 @@ python main.py
 ```yaml
 tasks:
   - rocm-examples/*           # All ROCm examples
+  - rocprim/*                 # All rocPRIM tasks
   - customer_hip/mmcv/*       # All MMCV HIP kernels
   - triton/tritonbench/*      # All Triton benchmarks
+  - torch2hip/*               # All Torch2HIP conversion tasks
 ```
 
 ## Task Configuration
@@ -176,96 +178,8 @@ AgentKernelArena uses a cumulative scoring system:
 
 **Example**: A submission that compiles (20), passes correctness (100), and achieves 1.5× speedup (150) would score 270 points.
 
-Note: This is not the only way to score, but we have found it to be effective and helpful.
+Note: This is not the only way to score. Users could always define their own ways.
 
-## Supported Agents
-
-### Cursor
-Interactive code editor agent with multi-turn conversation.
-
-```yaml
-agent:
-  template: cursor
-```
-
-### Claude Code
-Anthropic's official CLI agent for Claude.
-
-```yaml
-agent:
-  template: claude_code
-```
-
-### SWE-agent
-Software engineering agent for code modifications.
-
-```yaml
-agent:
-  template: swe-agent
-```
-
-### OpenEvolve (GEAK)
-Evolutionary coding agent for GPU kernel optimization using island-based evolution and MAP-Elites.
-
-```yaml
-agent:
-  template: openevolve
-```
-
-**Configuration** (`agents/openevolve/agent_config.yaml`):
-```yaml
-llm:
-  api_base: "https://api.openai.com/v1"  # Or custom endpoint
-  models:
-    - name: "claude-sonnet-4"
-      weight: 1.0
-max_iterations: 10
-evaluator:
-  timeout: 300  # seconds
-  verbose: true
-```
-
-**Supported Task Types**:
-- `instruction2triton`: Generate/optimize kernel from instructions
-- `triton2triton`: Optimize existing Triton kernel
-
-**See Also**: [INTEGRATION_openevolve.md](INTEGRATION_openevolve.md) for detailed documentation
-
-## ROCmBench Triton Kernels
-
-AgentKernelArena includes 31 ROCmBench tasks optimized for AMD ROCm GPUs, located in `tasks/triton/rocmbench/`.
-
-### Available Kernels
-Element-wise ops (add, mul, div), reductions (softmax, layernorm), matrix ops (gemm, matmul), and more.
-
-### Testing OpenEvolve with ROCmBench
-
-```bash
-# Set environment
-export OPENAI_API_KEY="your-api-key"
-export ROCM_GOLDEN_DATA_PATH="/path/to/golden/results"
-
-# Test single kernel
-python main.py \
-  --config config.yaml \
-  --tasks triton/rocmbench/test_add_kernel
-
-# Test multiple kernels
-python main.py \
-  --config config.yaml \
-  --tasks triton/rocmbench/gemm triton/rocmbench/softmax
-```
-
-### Task Structure
-```
-tasks/triton/rocmbench/test_add_kernel/
-├── config.yaml           # Task configuration
-└── test_add_kernel.py    # Triton kernel with pytest tests
-```
-
-### Evaluation Commands
-- **Correctness**: `pytest -vv -x test.py -k "not test_performance..."`
-- **Performance**: `pytest -vv -x test.py -k "test_performance..."`
 
 ## Development
 
@@ -353,34 +267,18 @@ prompt:
 
 4. **Add baseline performance** (optional): Create `baseline.txt` with expected performance metrics
 
-### Type Safety
 
-All functions in the codebase are strongly typed. When adding new code, ensure:
+## Next Steps
 
-```python
-from typing import Callable, Dict, Optional, List
-from pathlib import Path
-import logging
-
-def your_function(
-    param1: str,
-    param2: Path,
-    logger: logging.Logger,
-    optional_param: Optional[str] = None
-) -> Dict[str, str]:
-    """
-    Function description.
-
-    Args:
-        param1: Description
-        param2: Description
-        logger: Logger instance
-        optional_param: Optional description
-
-    Returns:
-        Description of return value
-    """
-    # Implementation
-    pass
-```
-
+- Enhance A/B Testing with Better Interactivity and User Experience
+- Benchmarking State-of-the-Art Agents for Technical Reporting
+- Standardize Holdout Tests with Comprehensive Shape Coverage
+- Add Holdout Test Evaluation via Independent Agent
+- New Feature: Support Multi Agents in Multi GPUs Server
+- New Feature: Resume the Evaluation From Previous Experiment
+- Agents Can Hang During Task Execution, Blocking Test Completion
+- Expand Pytorch2HIP Task Set to 100+ Tasks
+- Expand CUDA2HIP Task Set to 100+ Tasks
+- Expand Triton2Triton Task Set to 100+ Tasks
+- Expand HIP2HIP Task Set to 100+ Tasks
+- Restructure Task Directory by Take Type and Difficulty Level
