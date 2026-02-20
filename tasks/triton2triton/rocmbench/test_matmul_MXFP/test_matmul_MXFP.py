@@ -146,7 +146,11 @@ import pytest
 from numpy.random import RandomState
 
 result_gold = {}
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 ######################################## HELPERS for Eval ######################################## 

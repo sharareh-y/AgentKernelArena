@@ -45,7 +45,11 @@ import os
 from numpy.random import RandomState
 import pytest
 from torch.testing import assert_close
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 import triton

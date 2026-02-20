@@ -12,7 +12,7 @@ import triton.language as tl
 # Triton Kernels for randint
 #####################################
 
-BLOCK: tl.constexpr = 1024
+BLOCK = tl.constexpr(1024)
 
 @triton.jit
 def randn_kernel_runtime_seed(X, N, seed, dtype: tl.constexpr):
@@ -41,9 +41,13 @@ import scipy.stats
 import triton.language as tl
 
 result_gold = {}
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
-BLOCK: tl.constexpr = 1024
+BLOCK = tl.constexpr(1024)
 ######################################## HELPERS for Eval ######################################## 
 def set_seed(seed: int = 42) -> None:
     """

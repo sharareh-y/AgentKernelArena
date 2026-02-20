@@ -8,7 +8,6 @@ import pytest
 
 import triton
 import triton.language as tl
-from triton.backends.compiler import AttrsDescriptor
 from triton.compiler import ASTSource
 ######################################## Imports ########################################
 
@@ -33,11 +32,14 @@ import shutil
 import tempfile
 import os
 import pytest
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 import triton
 import triton.language as tl
-from triton.backends.compiler import AttrsDescriptor
 from triton.compiler import ASTSource
 
 result_gold = {}
@@ -93,14 +95,13 @@ except Exception:
 skip_if_no_target = pytest.mark.skipif(not TARGET_AVAILABLE, reason="Triton target not available (e.g., no GPU or CUDA/ROCm setup)")
 
 @skip_if_no_target
-def compile_kernel_dot_for_test(attrs): # Renamed to be specific
+def compile_kernel_dot_for_test(): # Renamed to be specific
     # kernel_dot is defined globally above
-    src = ASTSource(fn=kernel_dot, signature={'Z': "*fp32"}, attrs=attrs, constants={})
+    src = ASTSource(fn=kernel_dot, signature={'Z': "*fp32"}, constexprs={})
     triton.compile(src=src, target=target)
 
 @skip_if_no_target
 def test_compile_kernel_dot_in_forked_subproc(fresh_triton_cache, request) -> None: # Test name updated for clarity
-    config = AttrsDescriptor.from_hints({0: 16})
     current_start_method = multiprocessing.get_start_method(allow_none=True)
     if current_start_method is None:
         try:
@@ -110,7 +111,7 @@ def test_compile_kernel_dot_in_forked_subproc(fresh_triton_cache, request) -> No
     if multiprocessing.get_start_method(allow_none=True) != 'fork':
         pytest.skip("Test requires 'fork' multiprocessing start method.")
 
-    proc = multiprocessing.Process(target=compile_kernel_dot_for_test, args=(config, ))
+    proc = multiprocessing.Process(target=compile_kernel_dot_for_test)
     proc.start()
     proc.join(timeout=60)
     if proc.is_alive():
@@ -139,6 +140,28 @@ def kernel_dot_triton_wrapper(Z_tensor, num_warps_launch):
     grid = (1,)
     kernel_dot[grid](Z_tensor, num_warps=num_warps_launch) # Z_tensor is modified in-place
     return Z_tensor # Return for consistency, though modified in-place
+
+
+@skip_if_no_target
+@pytest.mark.parametrize("dtype_str", ["fp32", "fp16"])
+def test_kernel_dot_numerical_correctness(dtype_str, request):
+    set_seed()
+    if dtype_str == "fp32":
+        current_dtype = torch.float32
+    else:
+        current_dtype = torch.float16
+
+    z = torch.randn((FIXED_DIM_FOR_KERNEL_DOT, FIXED_DIM_FOR_KERNEL_DOT), device="cuda", dtype=current_dtype)
+    z_in = z.clone()
+    out = kernel_dot_triton_wrapper(z, num_warps_launch=1)
+    ref = torch.matmul(z_in, z_in)
+    torch.testing.assert_close(out, ref, atol=1e-2, rtol=1e-2, check_dtype=False)
+
+    result_gold["_CALL_SUCCESS_"] = torch.tensor([[1.0]])
+    test_case_name = request.node.name
+    sanitized_key_name = test_case_name.replace("::", "_").replace("[", "_").replace("]", "").replace("-", "_")
+    result_gold[sanitized_key_name] = out.clone().detach().cpu()
+
 
 # --- Define TFLOPS and GB/s calculators for the 16x16 dot product ---
 FIXED_DIM_FOR_KERNEL_DOT = 16

@@ -122,7 +122,11 @@ import numpy as np
 import random
 import torch 
 import os
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 
@@ -252,7 +256,7 @@ class LayerNorm(torch.autograd.Function):
         # heuristics for number of warps  
         num_warps = min(max(BLOCK_SIZE // 256, 1), 8)  
         # layernorm_kernel[(M, )](x, y, weight, bias, mean, rstd, x.stride(0), y.stride(0), M, N, eps, BLOCK_SIZE)  
-        grid = lambda meta: (triton.cdiv(M, meta['BLOCK_SIZE']), triton.cdiv(N, meta['BLOCK_SIZE']))  
+        grid = (M,)
         layernorm_wrapper_fn(grid, x, y, weight, bias, mean, rstd,  
                              x.stride(0), y.stride(0), M, N, M, N, eps, BLOCK_SIZE)  
         # Save tensors for backward pass
@@ -349,6 +353,13 @@ def test_layernorm(M, N, request, eps=1e-5):
   
     #backward pass (torch)  
     y_ref.backward(dy, retain_graph=True)
+    dx_ref, dw_ref, db_ref = [_.grad.clone() for _ in [x, w, b]]
+
+    # Validate both forward and backward numerics.
+    torch.testing.assert_close(y_triton, y_ref, atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(dx_tri, dx_ref, atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(dw_tri, dw_ref, atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(db_tri, db_ref, atol=1e-2, rtol=1e-2)
 
 
 # --- Define TFLOPS and GB/s calculators for LayerNorm Forward ---
@@ -405,7 +416,7 @@ OP_NAME_FOR_BENCHMARK = "layernorm_triton_fwd_perf"
 LAYERNORM_SHAPES_FOR_PERF = [
     (1823, 781), (2048, 2048), (8192, 8192), # Some medium to large
     (4096, 10240), # LLM typical
-    (1, 131072), (1, 89999), # Long sequence, batch 1
+    (1, 131072), # Long sequence, batch 1
     (128, 2048), (512, 4096)
 ]
 # Dtypes to test for performance

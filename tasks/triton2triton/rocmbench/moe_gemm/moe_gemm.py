@@ -1,6 +1,7 @@
 # Copyright(C) [2025] Advanced Micro Devices, Inc. All rights reserved.
 import triton  
 import triton.language as tl  
+import torch
 
 
 class MetaData():  
@@ -219,7 +220,11 @@ import sys
 import triton.language as tl # Required for tl.constexpr in quantize_input and other places  
 
 
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 ######################################## HELPERS for Eval ######################################## 
 import numpy as np

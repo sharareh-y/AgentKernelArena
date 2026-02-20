@@ -286,7 +286,11 @@ import sys
 import argparse  
 import pytest  
 import re  
-from geak_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict  
 ######################################## HELPERS for Eval ######################################## 
 import numpy as np
@@ -589,15 +593,19 @@ def test_correctness(M, N, K, col_a, col_b, in_dtype_a, in_dtype_b, out_dtype, r
         sanitized_key_name = test_case_name.replace("::", "_").replace("[", "_").replace("]", "").replace("-", "_")
         result_gold[sanitized_key_name] = c.to(torch.float32).clone().detach().cpu()
         ###################################################################
-        # torch.testing.assert_close(c.to(torch.float32),  
-        #                            torch_output.to(torch.int8).to(torch.float32), atol=1e-3, rtol=1e-2)  
+        torch.testing.assert_close(
+            c.to(torch.float32),
+            torch_output.to(torch.int8).to(torch.float32),
+            atol=1e-3,
+            rtol=1e-2,
+        )
     else:  
         ################### save c in result_gold ###################
         test_case_name = request.node.name
         sanitized_key_name = test_case_name.replace("::", "_").replace("[", "_").replace("]", "").replace("-", "_")
         result_gold[sanitized_key_name] = c.clone().detach().cpu()
         ###################################################################
-        # torch.testing.assert_close(c, torch_output.to(torch_out_dtype), atol=5e-3, rtol=1e-2)  
+        torch.testing.assert_close(c, torch_output.to(torch_out_dtype), atol=5e-3, rtol=1e-2)
   
 OP_NAME_FOR_BENCHMARK = "gemm_triton_perf"
 
