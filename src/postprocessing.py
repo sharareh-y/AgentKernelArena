@@ -1,9 +1,112 @@
 # Copyright(C) [2026] Advanced Micro Devices, Inc. All rights reserved.
 import yaml
 import logging
+import csv
+import sys
 from pathlib import Path
-from typing import List, Dict, Any
-from src.score import task_result_scoring
+from typing import List, Dict, Any, Optional, Union
+try:
+    from src.score import task_result_scoring
+except ModuleNotFoundError:
+    # Allow direct execution: `python src/postprocessing.py`
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from src.score import task_result_scoring
+
+
+def _build_general_report_lines(aggregate_result: Dict[str, Any]) -> List[str]:
+    """Build report lines shared by logger output and fallback txt output."""
+    lines = [
+        "=" * 80,
+        "AgentKernelArena Task Results Report",
+        "=" * 80,
+        "Overall Statistics:",
+        f"  Total Tasks:           {aggregate_result['total_tasks']}",
+        f"  Total Score:           {aggregate_result['total_score']:.2f}",
+        f"  Average Score:         {aggregate_result['average_score']:.2f}",
+        "Compilation:",
+        f"  Pass Count:            {aggregate_result['compilation_pass_count']}/{aggregate_result['total_tasks']}",
+        f"  Pass Rate:             {aggregate_result['compilation_pass_rate']:.1f}%",
+        "Correctness:",
+        f"  Pass Count:            {aggregate_result['correctness_pass_count']}/{aggregate_result['total_tasks']}",
+        f"  Pass Rate:             {aggregate_result['correctness_pass_rate']:.1f}%",
+        "Performance:",
+        f"  Speedup > 1.0 Count:   {aggregate_result['speedup_gt_1_count']}/{aggregate_result['total_tasks']}",
+        f"  Speedup > 1.0 Rate:    {aggregate_result['speedup_gt_1_rate']:.1f}%",
+        f"  Average Speedup:       {aggregate_result['average_speedup']:.2f}x",
+        f"  Valid Speedup Count:   {aggregate_result['valid_speedup_count']}",
+        "Task Details:",
+        "-" * 80,
+    ]
+
+    for task in aggregate_result["task_details"]:
+        status = "PASS" if task["pass_correctness"] else ("PARTIAL" if task["pass_compilation"] else "FAIL")
+        lines.append(
+            f"{status:<8} {task['task_name']:<40} Score: {task['score']:>6.1f}  Speedup: {task['speedup_ratio']:.2f}x"
+        )
+        if task["error"]:
+            lines.append(f"         Error: {task['error']}")
+
+    lines.append("=" * 80)
+    return lines
+
+
+def _write_report_txt_if_log_empty(
+    report_lines: List[str], workspace_paths: List[str], logger: logging.Logger
+) -> None:
+    """Write fallback txt report when logger file output is empty."""
+    if not workspace_paths:
+        return
+
+    file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+    log_is_empty = not file_handlers
+
+    for handler in file_handlers:
+        base_filename = getattr(handler, "baseFilename", None)
+        if not base_filename:
+            continue
+        log_path = Path(base_filename)
+        if log_path.exists() and log_path.stat().st_size > 0:
+            log_is_empty = False
+            break
+
+    if not log_is_empty:
+        return
+
+    workspace_root = Path(workspace_paths[0]).resolve().parent
+    txt_path = workspace_root / "task_results_report.txt"
+    with open(txt_path, "w") as f:
+        f.write("\n".join(report_lines) + "\n")
+    logger.info(f"Log was empty; wrote fallback text report: {txt_path}")
+
+
+def _ensure_logger(logger: Optional[logging.Logger]) -> logging.Logger:
+    """Return a usable logger when caller passes None."""
+    if logger is not None:
+        return logger
+
+    fallback_logger = logging.getLogger("postprocessing_fallback")
+    if not fallback_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        fallback_logger.addHandler(handler)
+    fallback_logger.setLevel(logging.INFO)
+    fallback_logger.propagate = False
+    return fallback_logger
+
+
+def _normalize_workspace_paths(workspace_paths: Union[str, List[str]]) -> List[str]:
+    """
+    Accept list of task workspace paths or a workspace root directory.
+    """
+    if isinstance(workspace_paths, str):
+        root = Path(workspace_paths).resolve()
+        if root.is_dir():
+            subdirs = sorted([str(p) for p in root.iterdir() if p.is_dir()])
+            return subdirs
+        return [workspace_paths]
+    return workspace_paths
 
 
 
@@ -15,47 +118,13 @@ def general_log_report(aggregate_result: Dict[str, Any], logger: logging.Logger)
         aggregate_result: Report dictionary from post_processing()
         logger: Logger instance to use for output
     """
-    logger.info("=" * 80)
-    logger.info("AgentKernelArena Task Results Report")
-    logger.info("=" * 80)
-
-    # Overall statistics
-    logger.info("Overall Statistics:")
-    logger.info(f"  Total Tasks:           {aggregate_result['total_tasks']}")
-    logger.info(f"  Total Score:           {aggregate_result['total_score']:.2f}")
-    logger.info(f"  Average Score:         {aggregate_result['average_score']:.2f}")
-
-    # Compilation statistics
-    logger.info("Compilation:")
-    logger.info(f"  Pass Count:            {aggregate_result['compilation_pass_count']}/{aggregate_result['total_tasks']}")
-    logger.info(f"  Pass Rate:             {aggregate_result['compilation_pass_rate']:.1f}%")
-
-    # Correctness statistics
-    logger.info("Correctness:")
-    logger.info(f"  Pass Count:            {aggregate_result['correctness_pass_count']}/{aggregate_result['total_tasks']}")
-    logger.info(f"  Pass Rate:             {aggregate_result['correctness_pass_rate']:.1f}%")
-
-    # Performance statistics
-    logger.info("Performance:")
-    logger.info(f"  Speedup > 1.0 Count:   {aggregate_result['speedup_gt_1_count']}/{aggregate_result['total_tasks']}")
-    logger.info(f"  Speedup > 1.0 Rate:    {aggregate_result['speedup_gt_1_rate']:.1f}%")
-    logger.info(f"  Average Speedup:       {aggregate_result['average_speedup']:.2f}x")
-    logger.info(f"  Valid Speedup Count:   {aggregate_result['valid_speedup_count']}")
-
-    # Task details
-    logger.info("Task Details:")
-    logger.info("-" * 80)
-
-    for task in aggregate_result['task_details']:
-        status = "PASS" if task['pass_correctness'] else ("PARTIAL" if task['pass_compilation'] else "FAIL")
-        logger.info(f"{status:<8} {task['task_name']:<40} Score: {task['score']:>6.1f}  Speedup: {task['speedup_ratio']:.2f}x")
-        if task['error']:
-            logger.info(f"         Error: {task['error']}")
-
-    logger.info("=" * 80)
+    for line in _build_general_report_lines(aggregate_result):
+        logger.info(line)
 
 
-def general_post_processing(workspace_paths: List[str], logger: logging.Logger) -> None:
+def general_post_processing(
+    workspace_paths: Union[str, List[str]], logger: Optional[logging.Logger]
+) -> None:
     """
     Process all task results and generate a comprehensive report.
 
@@ -75,7 +144,9 @@ def general_post_processing(workspace_paths: List[str], logger: logging.Logger) 
             - average_speedup: Average speedup ratio (only valid speedups)
             - task_details: List of detailed information for each task
     """
-    total_tasks = len(workspace_paths)
+    logger = _ensure_logger(logger)
+    normalized_workspace_paths = _normalize_workspace_paths(workspace_paths)
+    total_tasks = len(normalized_workspace_paths)
     total_score = 0.0
     compilation_pass_count = 0
     correctness_pass_count = 0
@@ -84,7 +155,7 @@ def general_post_processing(workspace_paths: List[str], logger: logging.Logger) 
 
     task_details = []
 
-    for workspace_path in workspace_paths:
+    for workspace_path in normalized_workspace_paths:
         workspace = Path(workspace_path)
         task_name = workspace.name  # Get task folder name
 
@@ -182,3 +253,86 @@ def general_post_processing(workspace_paths: List[str], logger: logging.Logger) 
     }
 
     general_log_report(aggregate_result, logger)
+    export_task_results_csv(task_details, normalized_workspace_paths, logger)
+    _write_report_txt_if_log_empty(_build_general_report_lines(aggregate_result), normalized_workspace_paths, logger)
+
+
+def export_task_results_csv(
+    task_details: List[Dict[str, Any]],
+    workspace_paths: List[str],
+    logger: logging.Logger
+) -> None:
+    """
+    Export per-task summary as CSV under the workspace root directory.
+
+    CSV columns:
+      - Task Name
+      - Task Type
+      - Score
+      - Speedup
+      - Optimization_summary
+    """
+    if not workspace_paths:
+        logger.warning("CSV export skipped: empty workspace_paths")
+        return
+
+    # All task workspaces are expected to be siblings under one workspace root.
+    workspace_root = Path(workspace_paths[0]).resolve().parent
+    csv_path = workspace_root / "task_results_summary.csv"
+
+    rows: List[Dict[str, Any]] = []
+    for task in task_details:
+        workspace = Path(task.get("workspace_path", ""))
+        result_file = workspace / "task_result.yaml"
+
+        task_name = task.get("task_name", workspace.name)
+        task_type = (
+            task_name.split("/", 1)[0]
+            if isinstance(task_name, str) and "/" in task_name
+            else ""
+        )
+        score = task.get("score", 0.0) if isinstance(task.get("score", 0.0), (int, float)) else 0.0
+        speedup = task.get("speedup_ratio", 0.0) if isinstance(task.get("speedup_ratio", 0.0), (int, float)) else 0.0
+        optimization_summary = ""
+
+        # If task_result.yaml is missing or invalid, force score/speedup to 0.
+        if result_file.exists():
+            try:
+                with open(result_file, "r") as f:
+                    result_data = yaml.safe_load(f) or {}
+                optimization_summary = result_data.get("optimization_summary", "") or ""
+                task_name = result_data.get("task_name", task_name)
+                if "/" in task_name:
+                    task_type = task_name.split("/", 1)[0]
+            except Exception:
+                score = 0.0
+                speedup = 0.0
+                optimization_summary = ""
+        else:
+            score = 0.0
+            speedup = 0.0
+
+        rows.append({
+            "Task Name": task_name,
+            "Task Type": task_type,
+            "Score": f"{float(score):.4f}",
+            "Speedup": f"{float(speedup):.4f}",
+            "Optimization_summary": optimization_summary.strip(),
+        })
+
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["Task Name", "Task Type", "Score", "Speedup", "Optimization_summary"]
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    logger.info(f"CSV report generated: {csv_path}")
+
+
+if __name__ == "__main__":
+    
+    # manually generate report
+    workspace_path = "workspace_MI300_claude_code"
+    general_post_processing(workspace_path, logger = None)
