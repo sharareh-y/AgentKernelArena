@@ -21,11 +21,14 @@ agent:
 # Specify task names to execute (use full path from tasks/ directory)
 # Examples:
 #   - hip2hip                           # All tasks under hip2hip
+#   - triton2triton                     # All tasks under triton2triton
+#   - torch2hip                         # All tasks under torch2hip
 #   - hip2hip/silu                      # single task under hip2hip
 #   - all                               # Run ALL available tasks
 
 tasks:
-  - hip2hip/assign_score_withk
+  - torch2hip/gpumode/12478_SoftNLL
+  - torch2hip/gpumode/14007_KDLoss
 
 target_gpu_model: MI300
 log_directory: logs
