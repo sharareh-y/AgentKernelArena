@@ -141,11 +141,11 @@ def run_performance():
                                  dtype=torch.int32, device=device)
     max_num_tokens = total_tokens + 64
 
-    for _ in range(5):
+    for _ in range(10):
         mod.compute_slot_mappings(idx_mapping, query_start_loc, positions, block_table, block_size, max_num_tokens)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

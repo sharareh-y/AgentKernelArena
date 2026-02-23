@@ -120,11 +120,11 @@ def run_performance():
     bitmask_words = (vocab_size + 31) // 32
     bitmask = torch.randint(0, 2**31, (num_masks, bitmask_words), dtype=torch.int32, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.apply_grammar_bitmask(logits.clone(), logits_indices, bitmask, vocab_size)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

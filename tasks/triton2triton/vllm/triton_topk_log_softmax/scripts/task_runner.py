@@ -64,9 +64,9 @@ def run_performance():
     torch.manual_seed(0)
     logits = torch.randn(batch, vocab, device=device, dtype=torch.float32)
     token_ids = torch.randint(0, vocab, (batch, ntok), dtype=torch.int64, device=device)
-    for _ in range(5): mod.compute_token_logprobs(logits, token_ids)
+    for _ in range(10): mod.compute_token_logprobs(logits, token_ids)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

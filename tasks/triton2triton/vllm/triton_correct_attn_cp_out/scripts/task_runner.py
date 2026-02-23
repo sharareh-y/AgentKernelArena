@@ -153,11 +153,11 @@ def run_performance():
     out = torch.randn(B, H, D, device=device, dtype=torch.float16)
     lses = torch.randn(N, B, H, device=device, dtype=torch.float32)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.correct_attn_cp_out(out, lses, 0, is_base_e=True)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

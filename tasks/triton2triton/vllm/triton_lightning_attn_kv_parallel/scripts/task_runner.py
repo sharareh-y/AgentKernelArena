@@ -165,12 +165,12 @@ def run_performance():
     v = torch.randn(B, H, N, E, device=device, dtype=dtype)
 
     # Warmup
-    for _ in range(5):
+    for _ in range(10):
         mod.lightning_attn_kv_parallel_forward(k, v, s, N)
     torch.cuda.synchronize()
 
     # Benchmark
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

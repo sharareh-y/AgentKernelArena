@@ -91,9 +91,9 @@ def run_performance():
     total_len = torch.full((batch,), 20, dtype=torch.int32, device=device)
     input_ids = torch.zeros(batch, dtype=torch.int32, device=device)
     local_pos = torch.zeros(batch, dtype=torch.int32, device=device)
-    for _ in range(5): mod.apply_bad_words(logits.clone(), idx_mapping, bad_word_ids, offsets, num_bw, all_token_ids, prompt_len, total_len, input_ids, local_pos, nbw)
+    for _ in range(10): mod.apply_bad_words(logits.clone(), idx_mapping, bad_word_ids, offsets, num_bw, all_token_ids, prompt_len, total_len, input_ids, local_pos, nbw)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

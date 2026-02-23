@@ -85,11 +85,11 @@ def run_performance():
     hidden_states = torch.randn(num_tokens, hidden_dim, device=device, dtype=torch.float16)
     expert_scales = torch.randn(num_tokens, top_k, device=device, dtype=torch.float32).abs() * 0.5
 
-    for _ in range(5):
+    for _ in range(10):
         mod.compute_identity(hidden_states, expert_scales, top_k)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

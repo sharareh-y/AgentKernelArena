@@ -97,10 +97,10 @@ def run_performance():
     w = torch.randn(N, device=device, dtype=torch.float16)
     b = torch.randn(N, device=device, dtype=torch.float16) if has_bias else None
     z = torch.randn(M, N, device=device, dtype=torch.float16) if has_z else None
-    for _ in range(5):
+    for _ in range(10):
         mod.layer_norm_fwd(x, w, b, 1e-5, z=z, is_rms_norm=is_rms)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

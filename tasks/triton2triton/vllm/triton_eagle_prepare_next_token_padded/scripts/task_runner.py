@@ -125,11 +125,11 @@ def run_performance():
     nr, ns, vs = TEST_SHAPES[PERF_SHAPE_IDX]
     sampled, dm, backup = make_inputs(nr, ns, vs, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.eagle_prepare_next_token_padded(sampled, dm, backup, vs)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

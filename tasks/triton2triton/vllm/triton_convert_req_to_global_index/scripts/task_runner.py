@@ -149,14 +149,14 @@ def run_performance():
     torch.manual_seed(0)
     req_id, block_table, token_indices = make_test_data(nt, nr, mbpr, ntk, bs, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.convert_req_to_global_index(
             req_id, block_table, token_indices,
             BLOCK_SIZE=bs, BLOCK_N=bn,
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

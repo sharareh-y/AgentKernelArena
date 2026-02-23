@@ -123,11 +123,11 @@ def run_performance():
     total_content = int(cu_lens[-1].item())
     write_contents = torch.randint(1, 10000, (total_content,), dtype=torch.int32, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.apply_write(output.clone(), write_indices, write_starts, write_contents, cu_lens)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

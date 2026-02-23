@@ -104,10 +104,10 @@ def run_performance():
     target_argmax = draft_ids.clone()
     bonus = torch.randint(0, vocab_size, (batch_size,), dtype=torch.int32, device=device)
     output = torch.full((batch_size, max_spec_len + 1), -1, dtype=torch.int32, device=device)
-    for _ in range(5):
+    for _ in range(10):
         mod.rejection_greedy_sample(output, cu, draft_ids, target_argmax, bonus, None, max_spec_len)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

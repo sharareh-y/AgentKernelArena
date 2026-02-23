@@ -116,11 +116,11 @@ def run_performance():
     torch.manual_seed(0)
     data = torch.randint(0, 256, (rows, cols), device=device, dtype=torch.uint8)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.triton_mx_block_rearrange(data)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

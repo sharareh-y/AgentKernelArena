@@ -99,11 +99,11 @@ def run_performance():
     input_index = torch.randint(0, total_slots, (num_tokens, topk), device=device, dtype=torch.int32)
     output_tensor = torch.zeros(num_tokens, hidden_size, device=device, dtype=torch.float16)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.ep_gather(input_tensor, topk_ids, topk_weight, input_index, output_tensor)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

@@ -124,11 +124,11 @@ def run_performance():
     device = "cuda"
     args, kwargs = gen_inputs(42, PERF_CASE_IDX, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.layer_norm_gated_fwd(*args, **kwargs)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

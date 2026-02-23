@@ -125,10 +125,10 @@ def run_performance():
     seq_idx = torch.zeros(nchunks, device=device, dtype=torch.int32)
     cu = torch.arange(0, nchunks + 1, device=device, dtype=torch.int32) * chunk_size
     out = torch.zeros(seqlen, nheads, headdim, device=device, dtype=torch.float32)
-    for _ in range(5):
+    for _ in range(10):
         mod.chunk_scan_fwd(cb, x, dt, dA_cumsum, C, states, cu, out, seq_idx)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

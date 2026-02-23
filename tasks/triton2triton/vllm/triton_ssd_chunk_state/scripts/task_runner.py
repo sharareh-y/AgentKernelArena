@@ -102,10 +102,10 @@ def run_performance():
     dt = torch.rand(nheads, nchunks, chunk_size, device=device, dtype=torch.float32) * 0.1
     dA_cumsum = torch.cumsum(dt * (-0.1), dim=-1)
     cu = torch.arange(0, nchunks + 1, device=device, dtype=torch.int32) * chunk_size
-    for _ in range(5):
+    for _ in range(10):
         mod.chunk_state_fwd(B, x, dt, dA_cumsum, cu)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

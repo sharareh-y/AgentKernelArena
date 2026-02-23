@@ -176,12 +176,12 @@ def run_performance():
         tlen = torch.randint(10, 50, (max_num_reqs,), dtype=torch.int32, device=device)
         return nct, lst, obc, st, ns, nr, ati, tlen
 
-    for _ in range(5):
+    for _ in range(10):
         nct, lst, obc, st, ns, nr, ati, tlen = make_inputs()
         mod.post_update(idx_mapping, nct, lst, obc, st, ns, nr, query_start_loc, ati, tlen)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

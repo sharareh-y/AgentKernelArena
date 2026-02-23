@@ -121,11 +121,11 @@ def run_performance():
     pos = torch.zeros(total_tokens, dtype=torch.int64, device=device)
     seq_lens = torch.zeros(max_num_reqs, dtype=torch.int32, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.prepare_pos_seq_lens(idx_mapping, query_start_loc, num_computed_tokens, pos, seq_lens)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

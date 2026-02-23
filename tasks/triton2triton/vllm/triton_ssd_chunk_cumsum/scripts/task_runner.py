@@ -112,10 +112,10 @@ def run_performance():
     A = -torch.rand(nheads, device=device, dtype=torch.float32) * 0.5
     dt_bias = torch.randn(nheads, device=device, dtype=torch.float32) * 0.01 if has_bias else None
     cu = torch.arange(0, nchunks + 1, device=device, dtype=torch.int32) * chunk_size
-    for _ in range(5):
+    for _ in range(10):
         mod.chunk_cumsum_fwd(dt, A, chunk_size, cu, dt_bias=dt_bias, dt_softplus=softplus)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

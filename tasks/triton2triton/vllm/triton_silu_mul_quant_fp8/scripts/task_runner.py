@@ -144,11 +144,11 @@ def run_performance():
     torch.manual_seed(0)
     x = torch.randn(M, N, device=device, dtype=torch.float16)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.silu_mul_per_token_group_quant_fp8_colmajor(x)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

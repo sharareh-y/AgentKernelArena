@@ -134,9 +134,9 @@ def run_performance():
     pres_pen = torch.full((batch,), 0.3, device=device)
     prompt_mask = torch.zeros(batch, (vocab + 31) // 32, dtype=torch.int32, device=device)
     output_counts = torch.randint(0, 5, (batch, vocab), dtype=torch.int32, device=device)
-    for _ in range(5): mod.apply_penalties(logits.clone(), idx_mapping, token_ids, local_pos, rep_pen, freq_pen, pres_pen, prompt_mask, output_counts, 0)
+    for _ in range(10): mod.apply_penalties(logits.clone(), idx_mapping, token_ids, local_pos, rep_pen, freq_pen, pres_pen, prompt_mask, output_counts, 0)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

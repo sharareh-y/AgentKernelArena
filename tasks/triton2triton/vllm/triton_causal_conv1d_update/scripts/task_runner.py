@@ -107,11 +107,11 @@ def run_performance():
     conv_state = torch.randn(batch, dim, state_len, device=device, dtype=torch.float32)
     conv_state = conv_state.transpose(1, 2).contiguous().transpose(1, 2)
     conv_state_indices = torch.arange(batch, device=device, dtype=torch.int32)
-    for _ in range(5):
+    for _ in range(10):
         mod.causal_conv1d_update(x.clone(), conv_state.clone(), weight, bias=bias_t,
                                  activation=activation, conv_state_indices=conv_state_indices)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

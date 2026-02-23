@@ -110,11 +110,11 @@ def run_performance():
     x = torch.randn(N, D, device=device, dtype=dtype)
     lengths = torch.tensor(lengths_list, device=device, dtype=torch.int32)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.pack_seq(x, lengths, pad_value=0.0)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

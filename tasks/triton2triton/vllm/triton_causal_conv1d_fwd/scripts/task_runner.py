@@ -132,11 +132,11 @@ def run_performance():
         query_start_loc[b + 1] = query_start_loc[b] + seqlens_list[b]
     cache_indices = torch.arange(batch, device=device, dtype=torch.int32)
     has_init = torch.ones(batch, device=device, dtype=torch.int32)
-    for _ in range(5):
+    for _ in range(10):
         mod.causal_conv1d_fwd(x, weight, bias_t, conv_states, query_start_loc,
                               cache_indices, has_init, activation=activation)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

@@ -78,11 +78,11 @@ def run_performance():
     A = torch.randn(M, K, device=device, dtype=torch.float16) * 0.1
     B = torch.randn(K, N, device=device, dtype=torch.float16) * 0.1
 
-    for _ in range(5):
+    for _ in range(10):
         mod.moe_matmul(A, B)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

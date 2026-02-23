@@ -163,13 +163,13 @@ def run_performance():
     kv_caches = torch.randn(B, H, D, E, device=device, dtype=dtype) * 0.1
 
     # Warmup
-    for _ in range(5):
+    for _ in range(10):
         kv_c = kv_caches.clone()
         mod.linear_attn_decode_forward(q, k, v, kv_c, slope_rate, slot_idx)
     torch.cuda.synchronize()
 
     # Benchmark
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

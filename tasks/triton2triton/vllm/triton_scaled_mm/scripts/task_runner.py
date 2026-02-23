@@ -126,11 +126,11 @@ def run_performance():
     scale_b = torch.rand(N, 1, device=device, dtype=torch.float32) + 0.5
     bias = torch.randn(N, device=device, dtype=dtype) if has_bias else None
 
-    for _ in range(5):
+    for _ in range(10):
         mod.triton_scaled_mm(input_t, weight, scale_a, scale_b, dtype, bias=bias)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

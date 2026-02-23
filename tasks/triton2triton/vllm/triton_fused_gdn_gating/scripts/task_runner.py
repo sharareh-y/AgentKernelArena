@@ -104,11 +104,11 @@ def run_performance():
     batch, nh = TEST_SHAPES[PERF_SHAPE_IDX]
     inputs = make_inputs(batch, nh, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.fused_gdn_gating(*inputs)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

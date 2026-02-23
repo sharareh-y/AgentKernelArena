@@ -169,7 +169,7 @@ def run_performance():
      lora_ids, num_active_loras) = make_test_data(
         M, hidden_size, lora_rank, num_loras, num_slices, device, 0)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.lora_expand(
             inputs, lora_b_weights, output_tensor, token_lora_mapping,
             token_indices_sorted, num_tokens_per_lora, lora_token_start_loc,
@@ -177,7 +177,7 @@ def run_performance():
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

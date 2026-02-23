@@ -70,9 +70,9 @@ def run_performance():
     counts = torch.full((batch_size,), tpr, dtype=torch.int32, device=device)
     cu = torch.cumsum(counts, dim=0)
     num_tokens = int(cu[-1].item())
-    for _ in range(5): mod.expand_batch_to_tokens(x, cu, num_tokens)
+    for _ in range(10): mod.expand_batch_to_tokens(x, cu, num_tokens)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

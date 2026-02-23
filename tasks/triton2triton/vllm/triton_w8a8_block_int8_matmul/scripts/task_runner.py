@@ -139,11 +139,11 @@ def run_performance():
     Bs = torch.rand(_triton.cdiv(N, block_n), _triton.cdiv(K, block_k),
                     device=device, dtype=torch.float32) + 0.01
 
-    for _ in range(5):
+    for _ in range(10):
         mod.w8a8_block_int8_matmul(A, B, As, Bs, [block_n, block_k])
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

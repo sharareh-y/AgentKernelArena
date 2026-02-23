@@ -93,10 +93,10 @@ def run_performance():
     a = torch.randn(seqlen, ngroups, k, device=device, dtype=torch.float16)
     b = torch.randn(seqlen, ngroups, k, device=device, dtype=torch.float16)
     cu = torch.arange(0, nchunks + 1, device=device, dtype=torch.int32) * chunk_size
-    for _ in range(5):
+    for _ in range(10):
         mod.bmm_chunk_fwd(a, b, chunk_size, cu, causal=causal)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

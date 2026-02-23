@@ -79,9 +79,9 @@ def run_performance():
     temp = torch.ones(num_reqs, device=device)
     seed = torch.randint(0, 2**31, (num_reqs,), dtype=torch.int64, device=device)
     pos = torch.arange(num_reqs, dtype=torch.int64, device=device)
-    for _ in range(5): mod.gumbel_sample(logits, idx_mapping, temp, seed, pos, False)
+    for _ in range(10): mod.gumbel_sample(logits, idx_mapping, temp, seed, pos, False)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

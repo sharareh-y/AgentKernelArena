@@ -70,8 +70,8 @@ def run_performance():
 
     rows, cols, bcols = TEST_SHAPES[PERF_SHAPE_IDX]
     # Time multiple runs
-    n_warmup = 3
-    n_iter = 10
+    n_warmup = 10
+    n_iter = 100
     for _ in range(n_warmup):
         subprocess.run(
             [BINARY, "--A_rows", str(rows), "--A_cols", str(cols), "--B_cols", str(bcols)],

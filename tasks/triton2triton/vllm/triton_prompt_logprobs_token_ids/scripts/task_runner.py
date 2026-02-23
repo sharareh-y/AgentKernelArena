@@ -74,9 +74,9 @@ def run_performance():
     idx_mapping = torch.arange(batch, dtype=torch.int32, device=device)
     num_computed = torch.zeros(batch, dtype=torch.int32, device=device)
     all_token_ids = torch.randint(0, 1000, (batch, max_len), dtype=torch.int64, device=device)
-    for _ in range(5): mod.get_prompt_logprobs_token_ids(num_tokens, query_start_loc, idx_mapping, num_computed, all_token_ids)
+    for _ in range(10): mod.get_prompt_logprobs_token_ids(num_tokens, query_start_loc, idx_mapping, num_computed, all_token_ids)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

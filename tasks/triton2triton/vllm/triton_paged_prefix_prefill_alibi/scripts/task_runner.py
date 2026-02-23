@@ -282,7 +282,7 @@ def run_performance():
     slopes = get_alibi_slopes(nh)
     alibi_slopes = torch.tensor(slopes, device=device, dtype=torch.float32)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.context_attention_fwd_alibi(
             q, k_new, v_new, o,
             k_cache, v_cache, b_loc,
@@ -292,7 +292,7 @@ def run_performance():
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

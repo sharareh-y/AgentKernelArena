@@ -112,11 +112,11 @@ def run_performance():
     device = "cuda"
     args, kwargs = gen_inputs(SEEDS[PERF_SEED_IDX], device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.fused_recurrent_gated_delta_rule_fwd(*args, **kwargs)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

@@ -138,11 +138,11 @@ def run_performance():
     nr, nss = TEST_SHAPES[PERF_SHAPE_IDX]
     ts, ids, cu = make_inputs(nr, nss, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.rejection_sample(ts, ids, cu, nss)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

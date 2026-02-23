@@ -162,14 +162,14 @@ def run_performance():
         cu_num_logits[r + 1] = cu_num_logits[r] + tokens_per_req
     total_logits = int(cu_num_logits[-1].item())
 
-    for _ in range(5):
+    for _ in range(10):
         mod.combine_sampled_and_draft_tokens(
             input_ids.clone(), idx_mapping, last_sampled_tokens, query_start_loc,
             seq_lens, prefill_len, draft_tokens, cu_num_logits, total_logits,
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

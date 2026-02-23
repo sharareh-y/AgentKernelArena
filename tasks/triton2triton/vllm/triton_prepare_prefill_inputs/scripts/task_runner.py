@@ -144,14 +144,14 @@ def run_performance():
     input_ids = torch.zeros(total_tokens, dtype=torch.int32, device=device)
     next_prefill_tokens = torch.zeros(max_num_reqs, dtype=torch.int32, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.prepare_prefill_inputs(
             input_ids, next_prefill_tokens, idx_mapping, query_start_loc,
             all_token_ids, prefill_len, num_computed_tokens,
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

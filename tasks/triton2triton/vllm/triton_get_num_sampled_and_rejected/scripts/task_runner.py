@@ -141,11 +141,11 @@ def run_performance():
         cu_num_logits[r + 1] = cu_num_logits[r] + logits_per_req
     num_sampled = torch.randint(1, logits_per_req + 1, (num_reqs,), dtype=torch.int32, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.get_num_sampled_and_rejected(num_sampled.clone(), seq_lens, cu_num_logits, idx_mapping, prefill_len)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

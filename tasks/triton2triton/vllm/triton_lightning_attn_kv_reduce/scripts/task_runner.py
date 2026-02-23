@@ -143,14 +143,14 @@ def run_performance():
     kv_history = torch.zeros(B, H, D, E, device=device, dtype=torch.float32)
 
     # Warmup
-    for _ in range(5):
+    for _ in range(10):
         kv_c = kv.clone()
         h_c = kv_history.clone()
         mod.lightning_attn_kv_reduce_forward(s, kv_c, h_c, N, BLOCK)
     torch.cuda.synchronize()
 
     # Benchmark
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

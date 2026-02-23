@@ -102,11 +102,11 @@ def run_performance():
     x = torch.randn(rows, hidden, device=device, dtype=dtype)
     weight = torch.randn(hidden, device=device, dtype=dtype)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.rms_norm(x, weight, eps=eps)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

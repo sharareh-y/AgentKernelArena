@@ -139,9 +139,12 @@ def _write_perf_report(report: Dict[str, Any]) -> None:
         json.dump(report, f, indent=2)
 
 
-def cal_hip_latency(kernel_hip: Any, inputs: List[Any], hip_fn: Any, n_iter: int = 1000) -> float:
+def cal_hip_latency(kernel_hip: Any, inputs: List[Any], hip_fn: Any, n_iter: int = 100, n_warmup: int = 10) -> float:
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
+
+    for _ in range(n_warmup):
+        kernel_hip(*inputs, fn=hip_fn)
 
     torch.cuda.synchronize()
     start.record()
@@ -156,9 +159,12 @@ def cal_hip_latency(kernel_hip: Any, inputs: List[Any], hip_fn: Any, n_iter: int
     return avg_time
 
 
-def cal_modu_latency(kernel_modu: Any, inputs: List[Any], n_iter: int = 1000) -> float:
+def cal_modu_latency(kernel_modu: Any, inputs: List[Any], n_iter: int = 100, n_warmup: int = 10) -> float:
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
+
+    for _ in range(n_warmup):
+        kernel_modu(*inputs)
 
     torch.cuda.synchronize()
     start.record()

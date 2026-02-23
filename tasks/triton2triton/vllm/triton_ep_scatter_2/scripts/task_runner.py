@@ -116,14 +116,14 @@ def run_performance():
         starts.append(s)
         s += a
 
-    for _ in range(5):
+    for _ in range(10):
         expert_start_loc = torch.tensor(starts, device=device, dtype=torch.int32)
         output_tensor = torch.zeros(total, hidden_size, device=device, dtype=torch.float16)
         output_index = torch.full((num_tokens, topk), -1, device=device, dtype=torch.int32)
         mod.ep_scatter_2(recv_x, recv_topk, expert_start_loc, output_tensor, output_index)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

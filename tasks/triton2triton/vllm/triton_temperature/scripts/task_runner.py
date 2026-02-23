@@ -64,9 +64,9 @@ def run_performance():
     logits = torch.randn(num_reqs, vocab_size, device=device, dtype=torch.float32)
     idx_mapping = torch.arange(num_reqs, dtype=torch.int32, device=device)
     temp = torch.rand(num_reqs, device=device) * 2 + 0.1
-    for _ in range(5): mod.apply_temperature(logits.clone(), idx_mapping, temp)
+    for _ in range(10): mod.apply_temperature(logits.clone(), idx_mapping, temp)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

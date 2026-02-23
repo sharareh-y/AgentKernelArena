@@ -124,12 +124,12 @@ def run_performance():
     device = "cuda"
     batch_size, vocab_size = TEST_SHAPES[PERF_SHAPE_IDX]
     torch.manual_seed(0)
-    for _ in range(5):
+    for _ in range(10):
         logits = torch.randn(batch_size, vocab_size, device=device, dtype=torch.float32)
         k = torch.full((batch_size,), 50, dtype=torch.int32, device=device)
         mod.apply_top_k_top_p_triton(logits, k, None)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

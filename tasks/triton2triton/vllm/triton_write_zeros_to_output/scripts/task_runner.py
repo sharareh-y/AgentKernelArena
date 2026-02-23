@@ -66,11 +66,11 @@ def run_performance():
     M, N = TEST_SHAPES[PERF_SHAPE_IDX]
     output = torch.randn(M, N, device=device, dtype=torch.float16)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.write_zeros(output)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

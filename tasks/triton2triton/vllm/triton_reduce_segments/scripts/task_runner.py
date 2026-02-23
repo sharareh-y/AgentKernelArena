@@ -137,14 +137,14 @@ def run_performance():
     segm_output, segm_max_t, segm_expsum, output, seqused_k, cu_seqlens_q = \
         make_test_data(num_seqs, nqh, hs, nseg, slk, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.reduce_attention_segments(
             segm_output, segm_max_t, segm_expsum, output,
             seqused_k, cu_seqlens_q,
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

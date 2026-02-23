@@ -94,11 +94,11 @@ def run_performance():
     recovered = torch.randint(0, vocab_size, (total_tokens,), dtype=torch.int32, device=device)
     uniform = torch.rand(total_tokens, dtype=torch.float64, device=device)
     is_greedy = torch.zeros(batch_size, dtype=torch.bool, device=device)
-    for _ in range(5):
+    for _ in range(10):
         output = torch.full((batch_size, max_spec_len + 1), -1, dtype=torch.int32, device=device)
         mod.rejection_random_sample(output, cu, draft_ids, draft_probs, target_probs, bonus, recovered, uniform, is_greedy, max_spec_len, vocab_size)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

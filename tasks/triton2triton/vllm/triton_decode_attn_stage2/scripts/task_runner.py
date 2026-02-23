@@ -207,7 +207,7 @@ def run_performance():
         make_stage1_outputs(bs, nh, nkv, hd, max_seq, num_splits, ps, device, dtype)
 
     # Warmup
-    for _ in range(5):
+    for _ in range(10):
         o.zero_()
         lse.zero_()
         mod.decode_softmax_reducev_fwd(
@@ -216,7 +216,7 @@ def run_performance():
     torch.cuda.synchronize()
 
     # Benchmark
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

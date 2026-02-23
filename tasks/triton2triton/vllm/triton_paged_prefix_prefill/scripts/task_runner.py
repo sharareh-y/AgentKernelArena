@@ -279,7 +279,7 @@ def run_performance():
     b_seq_len = torch.full((bs,), ctx_len + q_len, device=device, dtype=torch.int32)
 
     # Warmup
-    for _ in range(5):
+    for _ in range(10):
         mod.context_attention_fwd(
             q, k_new, v_new, o,
             k_cache, v_cache, b_loc,
@@ -289,7 +289,7 @@ def run_performance():
     torch.cuda.synchronize()
 
     # Benchmark
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

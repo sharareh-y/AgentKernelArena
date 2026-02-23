@@ -170,13 +170,13 @@ def run_performance():
     cos = torch.randn(3, num_tokens, rotary_dim // 2, device=device, dtype=dtype)
     sin = torch.randn(3, num_tokens, rotary_dim // 2, device=device, dtype=dtype)
 
-    for _ in range(5):
+    for _ in range(10):
         q_tmp = q.clone()
         k_tmp = k.clone()
         mod.triton_mrope(q_tmp, k_tmp, cos, sin, mrope_section, head_size, rotary_dim, False)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

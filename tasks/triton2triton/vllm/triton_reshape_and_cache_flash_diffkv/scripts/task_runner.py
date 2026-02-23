@@ -120,11 +120,11 @@ def run_performance():
     total_slots = num_blocks * block_size
     slot_mapping = torch.randperm(total_slots, device=device)[:num_tokens].to(torch.int64)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.reshape_and_cache_flash_diffkv(key, value, kv_cache, slot_mapping)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

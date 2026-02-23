@@ -69,9 +69,9 @@ def run_performance():
     logits = torch.randn(batch, vocab, device=device, dtype=torch.float32)
     idx_mapping = torch.arange(batch, dtype=torch.int32, device=device)
     min_p = torch.full((batch,), 0.1, device=device, dtype=torch.float32)
-    for _ in range(5): mod.apply_min_p(logits.clone(), idx_mapping, min_p)
+    for _ in range(10): mod.apply_min_p(logits.clone(), idx_mapping, min_p)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

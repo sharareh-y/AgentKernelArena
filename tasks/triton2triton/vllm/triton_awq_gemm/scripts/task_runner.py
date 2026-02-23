@@ -137,11 +137,11 @@ def run_performance():
     scales = torch.randn(num_groups, N, device=device, dtype=dtype).abs() * 0.1 + 0.01
     qzeros = torch.randint(0, 2**31, (num_groups, N_packed), device=device, dtype=torch.int32)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.awq_gemm_triton(input_tensor, qweight, scales, qzeros, split_k)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

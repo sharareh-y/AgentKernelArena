@@ -104,9 +104,9 @@ def run_performance():
     target_probs = torch.rand(total, vocab_size, device=device)
     target_probs = target_probs / target_probs.sum(-1, keepdim=True)
     q = torch.empty(batch_size, vocab_size, device=device).exponential_()
-    for _ in range(5): mod.sample_recovered_tokens(cu, draft_ids, draft_probs, target_probs, q, max_draft, vocab_size)
+    for _ in range(10): mod.sample_recovered_tokens(cu, draft_ids, draft_probs, target_probs, q, max_draft, vocab_size)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

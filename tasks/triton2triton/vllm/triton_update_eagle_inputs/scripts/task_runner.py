@@ -122,12 +122,12 @@ def run_performance():
     nr, hs, mml = TEST_SHAPES[PERF_SHAPE_IDX]
     inputs = make_inputs(nr, hs, mml, device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.update_eagle_inputs(inputs[0], inputs[1], inputs[2],
                                inputs[3], inputs[4], inputs[5], mml)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

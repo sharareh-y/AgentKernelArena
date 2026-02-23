@@ -180,14 +180,14 @@ def run_performance():
     query, output, key_cache, value_cache, block_table, seq_lens, qsl, scale = \
         make_test_data(num_seqs, slk, nqh, nkvh, hs, bs, xf, device, dtype)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.chunked_prefill_paged_decode(
             query, output, key_cache, value_cache, block_table,
             seq_lens, qsl, scale, filter_by_query_len=False,
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

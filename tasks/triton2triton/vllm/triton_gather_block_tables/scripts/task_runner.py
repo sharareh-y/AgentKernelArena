@@ -103,11 +103,11 @@ def run_performance():
     dst_block_table = torch.zeros_like(src_block_table)
     num_blocks = torch.full((max_num_reqs,), max_num_blocks, dtype=torch.int32, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.gather_block_tables(idx_mapping, src_block_table, dst_block_table, num_blocks)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

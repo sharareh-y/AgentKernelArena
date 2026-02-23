@@ -72,17 +72,28 @@ def run_performance():
 
     B, H = TEST_SHAPES[PERF_SHAPE_IDX]
     try:
-        result = subprocess.run(
-            [BINARY, "--B", str(B), "--H", str(H)],
-            capture_output=True, text=True, timeout=60)
-        output = result.stdout + result.stderr
-        # Parse "Perf: X.XXX us/launch"
-        match = re.search(r'Perf:\s+([\d.]+)\s+us/launch', output)
-        if match:
-            us = float(match.group(1))
-            return us / 1000.0  # convert to ms
-        # Fallback: just return a measured time
-        return -1.0
+        n_warmup = 10
+        n_iter = 100
+
+        # Warmup runs (ignore results) to reduce one-time effects.
+        for _ in range(n_warmup):
+            subprocess.run(
+                [BINARY, "--B", str(B), "--H", str(H)],
+                capture_output=True, text=True, timeout=60)
+
+        times_ms = []
+        for _ in range(n_iter):
+            result = subprocess.run(
+                [BINARY, "--B", str(B), "--H", str(H)],
+                capture_output=True, text=True, timeout=60)
+            output = result.stdout + result.stderr
+            # Parse "Perf: X.XXX us/launch" from the binary output.
+            match = re.search(r'Perf:\s+([\d.]+)\s+us/launch', output)
+            if not match:
+                return -1.0
+            times_ms.append(float(match.group(1)) / 1000.0)
+
+        return sum(times_ms) / len(times_ms)
     except Exception:
         return -1.0
 

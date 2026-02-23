@@ -165,7 +165,7 @@ def run_performance():
     prefill_mrope_delta = torch.randint(-10, 10, (max_num_reqs,), dtype=torch.int32, device=device)
     mrope_positions = torch.zeros(3, total_tokens + 1, dtype=torch.int64, device=device)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.prepare_mrope_positions(
             mrope_positions, prefill_mrope_positions, max_model_len,
             prefill_mrope_delta, idx_mapping, query_start_loc,
@@ -173,7 +173,7 @@ def run_performance():
         )
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

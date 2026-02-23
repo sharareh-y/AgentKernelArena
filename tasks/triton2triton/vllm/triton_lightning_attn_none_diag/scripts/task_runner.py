@@ -153,13 +153,13 @@ def run_performance():
     kv = torch.randn(B, H, NUM_BLOCK, D, E, device=device, dtype=torch.float32) * 0.01
 
     # Warmup
-    for _ in range(5):
+    for _ in range(10):
         o_c = o.clone()
         mod.lightning_attn_none_diag_forward(q, o_c, s, kv, BLOCK, CBLOCK)
     torch.cuda.synchronize()
 
     # Benchmark
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

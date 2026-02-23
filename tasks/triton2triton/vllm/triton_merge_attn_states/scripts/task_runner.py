@@ -126,11 +126,11 @@ def run_performance():
     suffix_lse = torch.randn(num_heads, num_tokens, device=device, dtype=torch.float32)
     output = torch.empty_like(prefix_output)
 
-    for _ in range(5):
+    for _ in range(10):
         mod.merge_attn_states(output, prefix_output, prefix_lse, suffix_output, suffix_lse)
     torch.cuda.synchronize()
 
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
 

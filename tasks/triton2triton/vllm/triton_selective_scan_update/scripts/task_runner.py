@@ -122,10 +122,10 @@ def run_performance():
     D = torch.randn(nheads, dim, device=device, dtype=torch.float32) if has_D else None
     z = torch.randn(batch, nheads, dim, device=device, dtype=torch.float32) if has_z else None
     out = torch.empty(batch, nheads, dim, device=device, dtype=torch.float32)
-    for _ in range(5):
+    for _ in range(10):
         mod.selective_state_update(state.clone(), x, dt, A, B, C, D=D, z=z, out=out)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     starts = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     ends = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):

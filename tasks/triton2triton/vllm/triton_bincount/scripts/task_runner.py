@@ -87,9 +87,9 @@ def run_performance():
     prefill_len = torch.full((batch,), seq_len, dtype=torch.int32, device=device)
     prompt_mask = torch.zeros(batch, (vocab + 31) // 32, dtype=torch.int32, device=device)
     output_counts = torch.zeros(batch, vocab, dtype=torch.int32, device=device)
-    for _ in range(5): mod.bincount(idx_mapping, all_token_ids, prompt_len, prefill_len, prompt_mask, output_counts, seq_len)
+    for _ in range(10): mod.bincount(idx_mapping, all_token_ids, prompt_len, prefill_len, prompt_mask, output_counts, seq_len)
     torch.cuda.synchronize()
-    n_iter = 20
+    n_iter = 100
     start_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     end_events = [torch.cuda.Event(enable_timing=True) for _ in range(n_iter)]
     for j in range(n_iter):
