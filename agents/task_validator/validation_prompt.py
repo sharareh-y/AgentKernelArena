@@ -42,13 +42,13 @@ checks:
     analysis: ""                       # Brief analysis of what correctness check actually does
 
   performance:
-    status: ""                         # PASS | FAIL | TIMEOUT | SKIP
+    status: ""                         # PASS | WARN | FAIL | TIMEOUT | SKIP
     exit_code: null
     duration_seconds: null
     stdout_snippet: ""
     stderr_snippet: ""
     report_file_valid: null
-    analysis: ""
+    analysis: ""                       # Include performance methodology review (warmup / measured iters / averaging)
 
   correctness_implementation_review:
     status: ""                         # PASS | WARN | FAIL
@@ -198,7 +198,17 @@ Run the performance command(s) from the workspace directory (if any):
 Use a timeout of {performance_timeout} seconds per command. Run the command EXACTLY ONCE — do NOT retry on failure or timeout.
 Capture stdout, stderr, and exit code.
 If timing fields are present in `eval_result.yaml` (`speedup`, `ori_time`, `opt_time`) and are non-null, treat performance as PASS even if wrapper exit code is inconsistent.
-Status: PASS if performance evidence is successful (exit code 0 OR performance_report status ok OR eval_result timing fields present), FAIL otherwise, TIMEOUT if exceeded {performance_timeout}s, SKIP if correctness failed or no performance command.
+In addition, review the performance measurement implementation (typically `scripts/task_runner.py` or task-specific perf scripts) and determine whether it uses the recommended methodology:
+- warmup iterations = 10
+- measured iterations = 100
+- reported runtime is an average across the measured iterations (and speedup is derived from those average runtimes)
+If performance execution succeeds but the methodology is different, missing, or cannot be verified from code, record a clear note in `checks.performance.analysis` and set `checks.performance.status` to `WARN` (not FAIL).
+Status:
+- PASS if performance evidence is successful (exit code 0 OR performance_report status ok OR eval_result timing fields present) AND the 10/100 average methodology is verified
+- WARN if performance evidence is successful but the methodology differs from 10 warmup / 100 measured average, or cannot be verified
+- FAIL if performance evidence is unsuccessful
+- TIMEOUT if exceeded {performance_timeout}s
+- SKIP if correctness failed or no performance command.
 
 ### Check 7: Correctness Implementation Review
 Read the correctness implementation code (usually in `scripts/task_runner.py` or a test file).

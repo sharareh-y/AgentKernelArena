@@ -164,6 +164,7 @@ The correctness check **must** be a real validation, not a trivial pass:
 1. The `performance_command` should measure kernel execution time and report it in a parseable format.
 2. Output should include baseline time and optimized time for speedup calculation.
 3. A `build/performance_report.json` with timing data is recommended.
+4. Recommended methodology: `10` warmup iterations + `100` measured iterations, and report the average measured runtime (speedup should be derived from averaged runtimes). The validator may mark performance as `WARN` if a task is functional but does not follow or clearly document this methodology.
 
 ### Result Template Compatibility
 
