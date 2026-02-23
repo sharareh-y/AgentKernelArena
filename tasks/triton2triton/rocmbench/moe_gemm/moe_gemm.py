@@ -895,7 +895,7 @@ def test_performance(M_orig, N, K, top_k, E, routed_weight, dtype_str, request):
     op_lambda = lambda: moe_gemm(a, b, c_for_kernel, metadata)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=10, repetition=50) # MoE can be slower
+    bench_config = do_bench_config(warm_up=10, repetition=100) # MoE can be slower
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

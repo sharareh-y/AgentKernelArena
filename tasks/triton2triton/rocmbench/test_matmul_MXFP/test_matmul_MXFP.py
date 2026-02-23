@@ -484,7 +484,7 @@ def test_performance(test_cfg_dict, request):
         num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=10, repetition=50)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

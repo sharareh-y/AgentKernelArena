@@ -219,7 +219,7 @@ def test_performance(N_tile_rows, M_tile_cols, descending_val, dtype_str, reques
         num_warps_launch=4 # Example, can be parametrized
     )
 
-    bench_config = do_bench_config(warm_up=50, repetition=200) # Sorting can vary
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Sorting can vary
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

@@ -219,7 +219,7 @@ def test_performance(dtype_str, num_warps_launch, request):
     op_lambda = lambda: kernel_dot_triton_wrapper(Z_tensor, num_warps_launch)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=100, repetition=1000) # Kernel is tiny, need more reps
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Kernel is tiny, need more reps
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

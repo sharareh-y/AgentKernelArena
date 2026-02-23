@@ -170,7 +170,7 @@ def test_performance(SIZE, BLOCK_SIZE_ARG, dtype_str, request): # Function accep
     # The op_lambda passes BLOCK_SIZE_ARG (runtime value) as the kernel's `BLOCK_SIZE` (constexpr name)
     op_lambda = lambda: add_kernel[grid](*kernel_args, BLOCK_SIZE=BLOCK_SIZE_ARG)
 
-    bench_config = do_bench_config(warm_up=25, repetition=100) # Smaller for faster debug
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Smaller for faster debug
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

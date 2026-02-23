@@ -300,7 +300,7 @@ def test_performance(size_val, seed_val, output_dtype_str, const_seed_bool, requ
         num_warps_launch=4 
     )
 
-    bench_config = do_bench_config(warm_up=25, repetition=100) 
+    bench_config = do_bench_config(warm_up=10, repetition=100) 
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

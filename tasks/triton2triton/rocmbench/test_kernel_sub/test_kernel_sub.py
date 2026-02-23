@@ -229,7 +229,7 @@ def test_performance(N_val, dtype_str, num_warps_launch, request):
         a, b, o_buffer, N_val, num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=100, repetition=500) 
+    bench_config = do_bench_config(warm_up=10, repetition=100) 
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

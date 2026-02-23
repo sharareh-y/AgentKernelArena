@@ -198,7 +198,7 @@ def test_performance(block_m_const, block_n_const, dtype_str, request): # Added 
         # , num_warps_launch # if num_warps is added to wrapper
     )
 
-    bench_config = do_bench_config(warm_up=50, repetition=200) # Reduction can be fast
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Reduction can be fast
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

@@ -210,7 +210,7 @@ def test_performance(shape, num_warps_arg, dtype_str, request, device='cuda'): #
     op_lambda = lambda: block_pointer_matmul_triton_wrapper(a, b, c, num_warps_arg)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

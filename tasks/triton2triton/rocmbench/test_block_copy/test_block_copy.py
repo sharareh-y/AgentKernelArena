@@ -222,7 +222,7 @@ def test_performance(dtypes_str_tuple, n, padding_option, request, device='cuda'
     )
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=50, repetition=200) # Copy is fast
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Copy is fast
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

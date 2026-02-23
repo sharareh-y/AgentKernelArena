@@ -193,7 +193,7 @@ def test_performance(N_const, M_const, dtype_str, num_warps_launch, request, dev
         x_perf_tensor, z_perf_buffer, N_const, M_const, num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=50, repetition=200) # Simple kernel
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Simple kernel
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

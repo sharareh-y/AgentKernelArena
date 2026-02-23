@@ -251,7 +251,7 @@ def test_performance(M, N, K, NUM_CTAS_param, NUM_WARPS_param, TRANS_A, TRANS_B,
         OUTPUT_F16_param, NUM_WARPS_param
     )
 
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

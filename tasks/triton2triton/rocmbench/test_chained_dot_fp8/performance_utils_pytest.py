@@ -9,11 +9,11 @@ import torch
 
 @dataclass
 class BenchConfig:
-    warm_up: int = 25
+    warm_up: int = 10
     repetition: int = 100
 
 
-def do_bench_config(warm_up: int = 25, repetition: int = 100) -> BenchConfig:
+def do_bench_config(warm_up: int = 10, repetition: int = 100) -> BenchConfig:
     """Create a benchmark configuration object compatible with existing task code."""
     return BenchConfig(warm_up=max(0, int(warm_up)), repetition=max(1, int(repetition)))
 

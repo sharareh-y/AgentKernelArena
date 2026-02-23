@@ -340,7 +340,7 @@ def test_performance(test_config, request):
     )
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=10, repetition=50) # Adjust reps as needed
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Adjust reps as needed
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
