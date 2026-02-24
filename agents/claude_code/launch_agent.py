@@ -12,6 +12,22 @@ from agents import register_agent
 from src.module_registration import AgentType, load_prompt_builder
 
 
+def _get_cli_version(agent_cmd: str) -> str:
+    """Best-effort CLI version lookup for logging."""
+    try:
+        result = subprocess.run(
+            [agent_cmd, "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except Exception:
+        return "unknown"
+    text = (result.stdout or result.stderr or "").strip()
+    return text or "unknown"
+
+
 def integrate_agent_config(prompt: str, agent_config: dict[str, Any]) -> str:
     """
     Integrate agent config into prompt.
@@ -49,7 +65,8 @@ def launch_agent(eval_config: dict[str, Any], task_config_dir: str, workspace: s
         "--dangerously-skip-permissions"
     )
 
-    if not shutil.which(AGENT):
+    agent_bin = shutil.which(AGENT)
+    if not agent_bin:
         raise RuntimeError(
             f"Command '{AGENT}' not found. Please ensure Claude Code CLI is installed and in your PATH."
         )
@@ -63,9 +80,25 @@ def launch_agent(eval_config: dict[str, Any], task_config_dir: str, workspace: s
     prompt = prompt_builder(task_config_dir, workspace, eval_config, logger)
 
     prompt = integrate_agent_config(prompt, agent_config)
+    configured_model = agent_config.get("model")
+    configured_effort = agent_config.get("effort")
     quoted_prompt = shlex.quote(prompt)
+
+    dynamic_options = OPTIONS
+    if configured_model:
+        dynamic_options += f" --model {shlex.quote(str(configured_model))}"
+    if configured_effort:
+        dynamic_options += f" --effort {shlex.quote(str(configured_effort))}"
+
     # IS_SANDBOX=1 allows skip-permissions even when invoked from a privileged user.
-    cmd = f"IS_SANDBOX=1 {AGENT} {OPTIONS} {quoted_prompt}"
+    cmd = f"IS_SANDBOX=1 {AGENT} {dynamic_options} {quoted_prompt}"
+
+    logger.info("Claude Code Preflight")
+    logger.info(f"  binary: {agent_bin}")
+    logger.info(f"  version: {_get_cli_version(AGENT)}")
+    logger.info(f"  workspace: {workspace}")
+    logger.info(f"  model: {configured_model if configured_model else '<claude CLI default/config>'}")
+    logger.info(f"  effort: {configured_effort if configured_effort else '<claude CLI default/config>'}")
 
     logger.info(f"Running command: {cmd}")
     logger.info("=" * 80)

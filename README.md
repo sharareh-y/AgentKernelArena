@@ -53,6 +53,7 @@ AgentKernelArena/
 ├── agents/
 │   ├── cursor/                  # Cursor agent integration
 │   ├── claude_code/             # Claude Code agent integration
+│   ├── codex/                   # Codex CLI agent integration
 │   ├── SWE_agent/               # SWE-agent integration
 │   ├── openevolve/              # OpenEvolve (GEAK) integration
 │   ├── geak_optimagentv2/        # GEAK OptimAgent v2 integration
@@ -104,9 +105,12 @@ export OPENAI_API_KEY="your_openai_key"
 export ANTHROPIC_API_KEY="your_anthropic_key"
 export OPENROUTER_API_KEY="your_openrouter_key"
 
-# Install agent CLIs (using claude_code as an example)
+# Install agent CLIs (examples)
 # For Claude Code:
 npm install -g @anthropic-ai/claude-code
+
+# For Codex CLI: install per the official Codex CLI instructions,
+# then ensure `codex` is available in PATH.
 
 ```
 
@@ -119,7 +123,7 @@ npm install -g @anthropic-ai/claude-code
 ```yaml
 # Select agent type
 agent:
-  template: claude_code  # Options: cursor, claude_code, swe_agent, single_llm_call, openevolve, geak_optimagentv2, geak_hip, geak_ourllm_kernel2kernel
+  template: claude_code  # Options: cursor, claude_code, codex, swe_agent, single_llm_call, openevolve, geak_optimagentv2, geak_hip, geak_ourllm_kernel2kernel
   max_iterations: 5
 
 # Specify tasks to run

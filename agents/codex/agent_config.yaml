@@ -1,0 +1,5 @@
+max_iterations: 3
+timeout_seconds: 600
+python_path: /root/AgentKernelArena/.venv/bin/python3
+# Optional: set explicitly so logs show the exact model used.
+# model: gpt-5.3-codex medium

@@ -13,6 +13,22 @@ from agents import register_agent
 from src.module_registration import AgentType, load_prompt_builder
 
 
+def _get_cli_version(agent_cmd: str) -> str:
+    """Best-effort CLI version lookup for logging."""
+    try:
+        result = subprocess.run(
+            [agent_cmd, "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except Exception:
+        return "unknown"
+    text = (result.stdout or result.stderr or "").strip()
+    return text or "unknown"
+
+
 def integrate_agent_config(prompt, agent_config: dict[str, Any]) -> str:
     """
     Integrate agent config into prompt.
@@ -67,7 +83,8 @@ def launch_agent(eval_config: dict[str, Any], task_config_dir: str, workspace: s
     logger = logging.getLogger(__name__)
 
     # Check if the command exists
-    if not shutil.which(AGENT):
+    agent_bin = shutil.which(AGENT)
+    if not agent_bin:
         raise RuntimeError(
             f"Command '{AGENT}' not found. Please ensure cursor-agent is installed and in your PATH."
         )
@@ -76,8 +93,19 @@ def launch_agent(eval_config: dict[str, Any], task_config_dir: str, workspace: s
     prompt = prompt_builder(task_config_dir, workspace, eval_config, logger)
 
     prompt = integrate_agent_config(prompt, agent_config)
+    configured_model = agent_config.get("model")
     quoted_prompt = shlex.quote(prompt)
-    cmd = f"{AGENT} {OPTIONS} {quoted_prompt}"
+    dynamic_options = OPTIONS
+    if configured_model:
+        dynamic_options += f" --model {shlex.quote(str(configured_model))}"
+    cmd = f"{AGENT} {dynamic_options} {quoted_prompt}"
+
+    logger.info("Cursor Agent Preflight")
+    logger.info(f"  binary: {agent_bin}")
+    logger.info(f"  version: {_get_cli_version(AGENT)}")
+    logger.info(f"  workspace: {workspace}")
+    logger.info(f"  model: {configured_model if configured_model else '<cursor CLI default/config>'}")
+    logger.info("  effort: <not a separate Cursor CLI flag; use a thinking model variant, e.g. sonnet-4-thinking>")
 
     # Enable to save the command to a shell script for manual replay/debugging.
     if False:

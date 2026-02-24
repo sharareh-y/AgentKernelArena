@@ -9,6 +9,7 @@ class AgentType(Enum):
     """Enumeration of supported agent types."""
     CURSOR = "cursor"
     CLAUDE_CODE = "claude_code"
+    CODEX = "codex"
     SWE_AGENT = "swe_agent"
     SINGLE_LLM_CALL = "single_llm_call"
     OPENEVOLVE = "openevolve"
@@ -63,6 +64,8 @@ def load_agent_launcher(agent_type: AgentType, logger: logging.Logger) -> Callab
             from agents.cursor import launch_agent  # noqa: F401
         elif agent_type == AgentType.CLAUDE_CODE:
             from agents.claude_code import launch_agent  # noqa: F401
+        elif agent_type == AgentType.CODEX:
+            from agents.codex import launch_agent  # noqa: F401
         elif agent_type == AgentType.SINGLE_LLM_CALL:
             from agents.single_llm_call import launch_agent  # noqa: F401
         elif agent_type == AgentType.OPENEVOLVE:
@@ -112,7 +115,7 @@ def load_post_processing_handler(agent_type: AgentType, logger: logging.Logger) 
         from agents.task_validator.validation_postprocessing import validation_post_processing
         logger.info(f"Using validation_post_processing for agent: {agent_name}")
         return validation_post_processing
-    elif agent_type in [AgentType.CURSOR, AgentType.CLAUDE_CODE, AgentType.SWE_AGENT, AgentType.GEAK_OPTIMAGENTV2, AgentType.GEAK_HIP, AgentType.OPENEVOLVE, AgentType.SINGLE_LLM_CALL, AgentType.OURLLM_KERNEL2KERNEL]:
+    elif agent_type in [AgentType.CURSOR, AgentType.CLAUDE_CODE, AgentType.CODEX, AgentType.SWE_AGENT, AgentType.GEAK_OPTIMAGENTV2, AgentType.GEAK_HIP, AgentType.OPENEVOLVE, AgentType.SINGLE_LLM_CALL, AgentType.OURLLM_KERNEL2KERNEL]:
         logger.info(f"Using general_post_processing for agent: {agent_name}")
         return general_post_processing
     else:
@@ -138,7 +141,7 @@ def load_prompt_builder(agent_type: AgentType, logger: logging.Logger) -> Callab
     agent_name = agent_type.value
 
     # Map agents to their prompt builder functions
-    if agent_type in [AgentType.CURSOR, AgentType.CLAUDE_CODE, AgentType.SWE_AGENT, AgentType.OURLLM_KERNEL2KERNEL]:
+    if agent_type in [AgentType.CURSOR, AgentType.CLAUDE_CODE, AgentType.CODEX, AgentType.SWE_AGENT, AgentType.OURLLM_KERNEL2KERNEL]:
         logger.info(f"Using standard prompt_builder for agent: {agent_name}")
         return prompt_builder
     else:
