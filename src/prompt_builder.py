@@ -7,11 +7,11 @@ from src.prompts import task_type
 
 def source_code(config: dict) -> str:
     """Generate a comprehensive task definition prompt for HIP kernel optimization."""
-    
+
     # Format lists properly
     source_files = "\n    - ".join(config['source_file_path']) if isinstance(config['source_file_path'], list) else config['source_file_path']
     target_kernels = "\n    - ".join(config['target_kernel_functions']) if isinstance(config['target_kernel_functions'], list) else config['target_kernel_functions']
-    
+
     return f"""
 ### Source Code
 **File(s) to optimize:**
@@ -81,6 +81,106 @@ Template location: Save the completed template as `task_result.yaml` in your wor
 """
 
 
+def _load_cheatsheet(task_type_name: str, target_gpu_model: str, project_root: Path,
+                     task_config: dict, logger: logging.Logger) -> tuple[str, str | None]:
+    """
+    Load the combined cheatsheet prompt and resolve the target gfx arch string.
+
+    The cheatsheet config (default_cheatsheet.yaml) has two independent sections:
+      - architecture: maps GPU model name → hardware spec document + gfx_arch string
+      - knowledge:    maps target language → language best-practice guide (GPU-agnostic)
+
+    Returns:
+        (cheatsheet_text, gfx_arch)  where gfx_arch may be None if not found.
+    """
+    # Task config can override the whole cheatsheet inline.
+    override = task_config.get('prompt', {}).get('cheatsheet')
+    if override is not None:
+        return override, None
+
+    gfx_arch = None
+    try:
+        cheatsheet_config_path = project_root / "src/prompts/cheatsheet/default_cheatsheet.yaml"
+        cheatsheet_config = yaml.safe_load(cheatsheet_config_path.read_text()) or {}
+
+        parts: list[str] = []
+
+        # --- Architecture section ---
+        arch_map = cheatsheet_config.get('architecture', {})
+        gpu_key = str(target_gpu_model)
+        arch_entry = (
+            arch_map.get(gpu_key)
+            or arch_map.get(gpu_key.upper())
+            or arch_map.get(gpu_key.lower())
+        )
+        if arch_entry:
+            gfx_arch = arch_entry.get('gfx_arch')
+            arch_file = arch_entry.get('file')
+            if arch_file:
+                arch_path = project_root / arch_file
+                parts.append(arch_path.read_text())
+                logger.info(f"Loaded architecture context for '{target_gpu_model}': {arch_path}")
+            else:
+                logger.warning(f"Architecture entry for '{target_gpu_model}' has no 'file' key")
+        else:
+            logger.warning(f"No architecture entry for GPU '{target_gpu_model}' in default_cheatsheet.yaml")
+
+        # --- Knowledge section ---
+        target_language = (task_type_name.split('2')[-1] if '2' in task_type_name else task_type_name).lower()
+        knowledge_map = cheatsheet_config.get('knowledge', {})
+        knowledge_file = knowledge_map.get(target_language)
+        if knowledge_file:
+            knowledge_path = project_root / knowledge_file
+            parts.append(knowledge_path.read_text())
+            logger.info(f"Loaded knowledge cheatsheet for '{target_language}': {knowledge_path}")
+        else:
+            logger.warning(f"No knowledge cheatsheet for language '{target_language}' in default_cheatsheet.yaml")
+
+        cheatsheet_text = "\n\n---\n\n".join(parts) if parts else ""
+
+    except Exception as e:
+        logger.warning(f"Failed to load cheatsheet: {e}, using empty cheatsheet")
+        cheatsheet_text = ""
+        gfx_arch = None
+
+    return cheatsheet_text, gfx_arch
+
+
+def _gpu_arch_precheck_prompt(target_gpu_model: str, gfx_arch: str | None) -> str:
+    """
+    Generate a pre-task directive instructing the agent to detect and fix any
+    hardcoded GPU architecture strings in the workspace build files before
+    running compile / test / benchmark commands.
+
+    Returns an empty string when gfx_arch is unknown (nothing to check against).
+    """
+    if not gfx_arch:
+        return ""
+
+    return f"""
+### Pre-Task Setup: GPU Architecture Consistency Check
+
+**Target GPU:** `{target_gpu_model}` — architecture token: `{gfx_arch}`
+
+**Before running any build, test, or benchmark command**, perform the following check:
+
+1. Scan all build-related files in the workspace for hardcoded GPU architecture strings.
+   Focus especially on:
+   - `Makefile` — variables such as `AMDGPU_TARGETS`, `ROCM_ARCH`,
+     `HIPCC_COMPILE_FLAGS_APPEND`, `PYTORCH_ROCM_ARCH`, and flags like
+     `--offload-arch=<arch>` or `-DAMDGPU_TARGETS=<arch>`
+   - `CMakeLists.txt` / `*.cmake` — `AMDGPU_TARGETS`, `GPU_TARGETS`, `--offload-arch`
+   - Shell scripts and Python test scripts — cmake invocations with `-DAMDGPU_TARGETS=`
+
+2. If **any** file contains a hardcoded GPU architecture that **differs** from
+   `{gfx_arch}`, update that file to use `{gfx_arch}` before proceeding with
+   any other step.
+
+3. Only after confirming that all build files target `{gfx_arch}` (or were already
+   correct) should you proceed with the task.
+"""
+
+
 def prompt_builder(task_config_dir: str, workspace_directory: Path, eval_config: dict, logger: logging.Logger) -> str:
     """
     Build the initial prompt for the agent based on task configuration.
@@ -88,11 +188,20 @@ def prompt_builder(task_config_dir: str, workspace_directory: Path, eval_config:
     Args:
         task_config_dir: Path to the task's config.yaml
         workspace_directory: Path to the duplicated workspace for the agent
-        task_type_name: Type of task (hip2hip, pytorch2hip, triton2triton)
+        eval_config: Evaluator-level config (contains target_gpu_model, etc.)
         logger: Logger instance
 
     Returns:
         str: The complete prompt for the agent
+
+    Prompt section order:
+        1. Task Type
+        2. Source Code
+        3. GPU Arch Pre-check  ← new: fix mismatched arch before first build
+        4. Instructions
+        5. Output Format
+        6. Cheatsheet  (architecture context + language knowledge, combined)
+        7. Workspace Directory
     """
     # Load task configuration
     task_config_path = Path(task_config_dir)
@@ -123,7 +232,7 @@ def prompt_builder(task_config_dir: str, workspace_directory: Path, eval_config:
         raise ValueError(f"Unknown task type: {task_type_name}")
 
     prompt_sections.append(task_type_prompt)
-    
+
     # 2. Source Code Section
     source_code_prompt = task_config.get('prompt', {}).get('source_code')
     source_file_path = task_config.get('source_file_path', [])
@@ -135,14 +244,25 @@ def prompt_builder(task_config_dir: str, workspace_directory: Path, eval_config:
 
     prompt_sections.append(source_code_prompt)
 
-    # 3. Instructions Section
+    # 3. Cheatsheet: architecture context + language knowledge
+    project_root = Path(__file__).resolve().parent.parent
+    cheatsheet_prompt, gfx_arch = _load_cheatsheet(
+        task_type_name, target_gpu_model, project_root, task_config, logger
+    )
+
+    # 4. GPU Arch Pre-check (inserted before instructions so the agent sees it first)
+    precheck_prompt = _gpu_arch_precheck_prompt(target_gpu_model, gfx_arch)
+    if precheck_prompt:
+        prompt_sections.append(precheck_prompt)
+
+    # 5. Instructions Section
     instructions_prompt = task_config.get('prompt', {}).get('instructions')
     if instructions_prompt is None:
         instructions_prompt = instructions(task_config)
 
     prompt_sections.append(instructions_prompt)
 
-    # 4. Output Format Section
+    # 6. Output Format Section
     task_result_template = task_config.get('task_result_template', '')
     task_result_prompt = task_config.get('prompt', {}).get('output_format')
     if task_result_prompt is None:
@@ -150,36 +270,10 @@ def prompt_builder(task_config_dir: str, workspace_directory: Path, eval_config:
 
     prompt_sections.append(task_result_prompt)
 
-    # 5. Cheatsheet Section
-    cheatsheet_prompt = task_config.get('prompt', {}).get('cheatsheet')
-    if cheatsheet_prompt is None:
-        # Load cheatsheet mapping and pick by target language (task_type suffix after '2')
-        try:
-            project_root = Path(__file__).resolve().parent.parent
-            cheatsheet_config_path = project_root / "src/prompts/cheatsheet/default_cheatsheet.yaml"
-            cheatsheet_config = yaml.safe_load(cheatsheet_config_path.read_text()) or {}
-            target_language = (task_type_name.split('2')[-1] if '2' in task_type_name else task_type_name).lower()
-            gpu_key = str(target_gpu_model)
-            gpu_map = (
-                cheatsheet_config.get(gpu_key)
-                or cheatsheet_config.get(gpu_key.upper())
-                or cheatsheet_config.get(gpu_key.lower())
-            )
-            cheatsheet_file = gpu_map.get(target_language) if isinstance(gpu_map, dict) else None
-            if cheatsheet_file:
-                cheatsheet_path = project_root / cheatsheet_file
-                cheatsheet_prompt = cheatsheet_path.read_text()
-                logger.info(f"Loaded cheatsheet for target '{target_language}' on GPU '{target_gpu_model}': {cheatsheet_path}")
-            else:
-                logger.warning(f"No cheatsheet mapping for target '{target_language}' on GPU '{target_gpu_model}', using empty cheatsheet")
-                cheatsheet_prompt = ""
-        except Exception as e:
-            logger.warning(f"Failed to load cheatsheet from mapping: {e}, using empty cheatsheet")
-            cheatsheet_prompt = ""
-
+    # 7. Cheatsheet Section (architecture + knowledge combined)
     prompt_sections.append(cheatsheet_prompt)
 
-    # 6. Workspace Directory Information
+    # 8. Workspace Directory Information
     workspace_info = f"""
 ### Workspace Directory
 Your working directory is: `{workspace_directory}`

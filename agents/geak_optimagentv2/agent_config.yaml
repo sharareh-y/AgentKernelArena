@@ -50,6 +50,9 @@ descendant_debug: 0
 
 # Target GPU architecture (e.g., "MI325X", "MI250", "MI200")
 target_gpu: "MI325X"
+# TODO: launch_agent.py:1043 hardcodes the golden_metrics directory name as
+#   "AMD_Instinct_MI300X_VF_golden_metrics". This path should be parameterized
+#   by target_gpu so it resolves correctly on different GPU models (e.g. MI355X).
 
 # Enable kernel profiling with rocprof-compute
 profiling: true

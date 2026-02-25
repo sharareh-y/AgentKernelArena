@@ -5,6 +5,55 @@ import shutil
 import logging
 from pathlib import Path
 
+import yaml
+
+
+def _resolve_gfx_arch(target_gpu_model: str) -> str | None:
+    """
+    Look up the gfx architecture token (e.g. 'gfx942') for a given GPU model
+    name (e.g. 'MI300') from default_cheatsheet.yaml.
+
+    Returns None if the GPU model is not found.
+    """
+    cheatsheet_path = (
+        Path(__file__).resolve().parent / "prompts" / "cheatsheet" / "default_cheatsheet.yaml"
+    )
+    try:
+        config = yaml.safe_load(cheatsheet_path.read_text()) or {}
+    except Exception:
+        return None
+
+    arch_map = config.get("architecture", {})
+    gpu_key = str(target_gpu_model)
+    entry = (
+        arch_map.get(gpu_key)
+        or arch_map.get(gpu_key.upper())
+        or arch_map.get(gpu_key.lower())
+    )
+    if isinstance(entry, dict):
+        return entry.get("gfx_arch")
+    return None
+
+
+def setup_rocm_env(target_gpu_model: str, logger: logging.Logger) -> None:
+    """
+    Set PYTORCH_ROCM_ARCH (and related env vars) based on config.yaml's
+    target_gpu_model so that torch.utils.cpp_extension.load() and hipcc
+    compile for the correct GPU architecture.
+
+    Should be called once at the start of main(), before any task is launched.
+    """
+    gfx_arch = _resolve_gfx_arch(target_gpu_model)
+    if not gfx_arch:
+        logger.warning(
+            f"Could not resolve gfx arch for GPU model '{target_gpu_model}'. "
+            "PYTORCH_ROCM_ARCH will not be set; PyTorch will fall back to its built-in arch list."
+        )
+        return
+
+    os.environ["PYTORCH_ROCM_ARCH"] = gfx_arch
+    logger.info(f"Set PYTORCH_ROCM_ARCH={gfx_arch} (from target_gpu_model={target_gpu_model})")
+
 
 def check_environment() -> None:
     # check hipcc, rocprof-compute
