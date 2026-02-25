@@ -24,14 +24,10 @@ ROCM_PATH_DETECTED := $(shell \
 
 # ROCm environment variables
 export ROCM_PATH := $(ROCM_PATH_DETECTED)
-export PYTORCH_ROCM_ARCH := gfx90a;gfx942
 export CMAKE_PREFIX_PATH := $(ROCM_PATH_DETECTED):$(ROCM_PATH_DETECTED)/hip:/usr/local:/usr
 export MAX_JOBS := 8
 export HIP_FORCE_DEV_KERNARG := 1
 export HSA_NO_SCRATCH_RECLAIM := 1
-export HIPCC_COMPILE_FLAGS_APPEND := --offload-arch=gfx942
-export AMDGPU_TARGETS := gfx942
-export ROCM_ARCH := gfx942
 
 .PHONY: help setup clean
 

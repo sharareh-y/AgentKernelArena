@@ -1,4 +1,25 @@
-MI300:
-  hip: src/prompts/cheatsheet/MI300_hip_kernel_cheatsheet.md
-  triton: src/prompts/cheatsheet/MI300_triton_kernel_cheatsheet.md
+# ============================================================
+# Cheatsheet Configuration
+#
+# Two independent dimensions:
+#   architecture: GPU-model → hardware spec document + gfx arch string
+#   knowledge:    target language → language best-practice guide (GPU-agnostic)
+#
+# prompt_builder.py combines BOTH for every task:
+#   final cheatsheet = architecture[gpu_model].file + knowledge[language]
+# ============================================================
 
+architecture:
+  MI300:
+    gfx_arch: gfx942
+    file: src/prompts/cheatsheet/MI300X_architecture.md
+  MI300X:
+    gfx_arch: gfx942
+    file: src/prompts/cheatsheet/MI300X_architecture.md
+  MI355X:
+    gfx_arch: gfx950
+    file: src/prompts/cheatsheet/MI355X_architecture.md
+
+knowledge:
+  hip:    src/prompts/cheatsheet/hip_cheatsheet.md
+  triton: src/prompts/cheatsheet/triton_cheatsheet.md

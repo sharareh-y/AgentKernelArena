@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from src.tasks import get_task_config
-from src.preprocessing import setup_workspace
+from src.preprocessing import setup_workspace, setup_rocm_env
 from src.module_registration import AgentType, load_agent_launcher, load_post_processing_handler
 
 
@@ -66,6 +66,9 @@ def main() -> None:
     logger.info(f"Agent: {agent.value}")
     logger.info(f"Target Architecture: {target_gpu_model}")
     logger.info(f"Workspace Directory: {workspace_directory}")
+
+    # Set PYTORCH_ROCM_ARCH based on target_gpu_model before any task runs
+    setup_rocm_env(target_gpu_model, logger)
 
     # Load agent launcher
     try:
