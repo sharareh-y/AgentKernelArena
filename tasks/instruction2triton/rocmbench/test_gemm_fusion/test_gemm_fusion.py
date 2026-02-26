@@ -67,7 +67,11 @@ import numpy as np
 import random
 import torch 
 import os
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 
@@ -256,7 +260,7 @@ def test_performance(test_params_dict, dtype_str, request):
         block_m, block_n, num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

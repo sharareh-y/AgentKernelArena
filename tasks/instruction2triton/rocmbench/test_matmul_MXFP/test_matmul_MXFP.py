@@ -4,7 +4,6 @@ import pytest
 import torch
 import triton
 import triton.language as tl
-import triton.tools.experimental_descriptor
 ######################################## Imports ######################################## 
 
 
@@ -146,7 +145,11 @@ import pytest
 from numpy.random import RandomState
 
 result_gold = {}
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 ######################################## HELPERS for Eval ######################################## 
@@ -481,7 +484,7 @@ def test_performance(test_cfg_dict, request):
         num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=10, repetition=50)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

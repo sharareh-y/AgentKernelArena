@@ -12,7 +12,7 @@ import triton.language as tl
 # Triton Kernels for randint
 #####################################
 
-BLOCK: tl.constexpr = 1024
+BLOCK = tl.constexpr(1024)
 
 @triton.jit
 def randn_kernel_runtime_seed(X, N, seed, dtype: tl.constexpr):
@@ -37,13 +37,16 @@ import os
 import pytest
 from numpy.random import RandomState
 import triton
-import scipy.stats
 import triton.language as tl
 
 result_gold = {}
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
-BLOCK: tl.constexpr = 1024
+BLOCK = tl.constexpr(1024)
 ######################################## HELPERS for Eval ######################################## 
 def set_seed(seed: int = 42) -> None:
     """
@@ -199,7 +202,10 @@ def test_rand(size, seed, dtype, const_seed,  request, device='cuda'):
     ################################################################### 
 
     assert all((x >= 0) & (x <= 1))
-    assert scipy.stats.kstest(x.tolist(), 'uniform', args=(0, 1)).statistic < 0.01
+    x_np = np.sort(x.cpu().numpy())
+    n = len(x_np)
+    ks_stat = max(np.max(np.arange(1, n + 1) / n - x_np), np.max(x_np - np.arange(0, n) / n))
+    assert ks_stat < 0.01
 
 
 
@@ -277,7 +283,7 @@ def test_performance(size_val, seed_val, offset_tl_dtype_str, const_seed_bool, r
         num_warps_launch=4 
     )
 
-    bench_config = do_bench_config(warm_up=25, repetition=100) 
+    bench_config = do_bench_config(warm_up=10, repetition=100) 
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

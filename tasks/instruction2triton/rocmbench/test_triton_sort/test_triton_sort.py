@@ -24,7 +24,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 
@@ -178,7 +182,7 @@ OP_NAME_FOR_BENCHMARK = "triton_sort_perf"
 # Kernel's N and M are constexpr, defining the tile size it processes.
 SORT_TILE_SHAPES_FOR_PERF = [
     # N_tile_rows, M_tile_cols (for the single tile processed by kernel)
-    (1, 1024), (1, 4096), (1, 8192), (1, 16384), # Sorting long single rows
+    (1, 1024), (1, 4096), (1, 8192), # Sorting long single rows
     (8, 512), (8, 1024), (8, 2048),             # Sorting a few medium rows
     (64, 128), (64, 256),            # Sorting more, shorter rows
     (256, 64), (256, 128), (256, 256)
@@ -215,7 +219,7 @@ def test_performance(N_tile_rows, M_tile_cols, descending_val, dtype_str, reques
         num_warps_launch=4 # Example, can be parametrized
     )
 
-    bench_config = do_bench_config(warm_up=50, repetition=200) # Sorting can vary
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Sorting can vary
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

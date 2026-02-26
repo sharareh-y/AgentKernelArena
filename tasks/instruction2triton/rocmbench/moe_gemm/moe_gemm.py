@@ -1,6 +1,7 @@
 # Copyright(C) [2025] Advanced Micro Devices, Inc. All rights reserved.
 import triton  
 import triton.language as tl  
+import torch
 
 
 class MetaData():  
@@ -219,7 +220,11 @@ import sys
 import triton.language as tl # Required for tl.constexpr in quantize_input and other places  
 
 
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 ######################################## HELPERS for Eval ######################################## 
 import numpy as np
@@ -890,7 +895,7 @@ def test_performance(M_orig, N, K, top_k, E, routed_weight, dtype_str, request):
     op_lambda = lambda: moe_gemm(a, b, c_for_kernel, metadata)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=10, repetition=50) # MoE can be slower
+    bench_config = do_bench_config(warm_up=10, repetition=100) # MoE can be slower
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

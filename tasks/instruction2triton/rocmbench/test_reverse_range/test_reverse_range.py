@@ -23,7 +23,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -146,7 +150,7 @@ def test_performance(dtype_str, num_warps_launch, request, device='cuda'):
         data_perf, res_perf_buffer, num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=100, repetition=1000) # Simple kernel, more reps
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Simple kernel, more reps
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)

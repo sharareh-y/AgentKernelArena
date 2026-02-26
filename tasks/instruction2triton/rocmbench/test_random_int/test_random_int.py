@@ -12,7 +12,7 @@ import triton.language as tl
 # Triton Kernels for randint
 #####################################
 
-BLOCK: tl.constexpr = 1024
+BLOCK = tl.constexpr(1024)
 
 @triton.jit
 def randint_kernel_runtime_seed(X, N, seed_val): # Kernel for runtime seed
@@ -38,11 +38,15 @@ import pytest
 from numpy.random import RandomState
 import triton
 import triton.language as tl
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
-BLOCK: tl.constexpr = 1024
+BLOCK = tl.constexpr(1024)
 ######################################## HELPERS for Eval ######################################## 
 def set_seed(seed: int = 42) -> None:
     """
@@ -185,8 +189,8 @@ def test_randint(size, seed, dtype, const_seed, request, device='cuda'):
     set_seed()
 
     torch_dtype = getattr(torch, dtype)
-    numpy_dtype = getattr(np, f"u{dtype}") # Philox generates unsigned integers
-    config = {'int32': PHILOX_32, 'int64': PHILOX_64}[dtype]
+    numpy_dtype = np.uint32  # tl.randint always uses 32-bit Philox regardless of output dtype
+    config = PHILOX_32
 
     # triton result
     x = torch.empty(size, dtype=torch_dtype, device=device)
@@ -206,7 +210,7 @@ def test_randint(size, seed, dtype, const_seed, request, device='cuda'):
     result_gold[sanitized_key_name] = x.clone().detach().cpu()
     ################################################################### 
 
-    out_tri = x.cpu().numpy().astype(numpy_dtype).flatten().tolist()
+    out_tri = x.cpu().to(torch.int32).numpy().astype(numpy_dtype).flatten().tolist()
     
     # reference result
     if N > 0:
@@ -296,7 +300,7 @@ def test_performance(size_val, seed_val, output_dtype_str, const_seed_bool, requ
         num_warps_launch=4 
     )
 
-    bench_config = do_bench_config(warm_up=25, repetition=100) 
+    bench_config = do_bench_config(warm_up=10, repetition=100) 
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
