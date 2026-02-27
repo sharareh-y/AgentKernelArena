@@ -7,7 +7,7 @@ performance_command:
 - pytest -vv -x --maxfail=1 multreduce_matmul_dot_kernel.py -k "test_performance or
   test_save_performance_results"
 task_type: instruction2triton
-task_result_template: null
+task_result_template: task_result_template.yaml
 prompt:
   cheatsheet: null
   instructions: "\nYou are an expert in triton programming language. You will be given\
@@ -65,7 +65,6 @@ prompt:
     \       allowing for potentially more efficient, unmasked loads along the K dimension.\n\
     \"\"\"\n# Your code here.\n\n"
   source_code: null
-source_file_path:
-- null
+source_file_path: []
 target_kernel_functions:
 - triton_dot_matmul_kernel

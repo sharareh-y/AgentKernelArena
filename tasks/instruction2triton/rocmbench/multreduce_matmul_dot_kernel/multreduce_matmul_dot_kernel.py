@@ -155,7 +155,11 @@ import torch
 from torch import Tensor  
 import triton  
 import triton.language as tl  
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -400,7 +404,7 @@ def test_performance(M: int, N: int, K: int, use_bias: bool, dtype_str: str, req
     op_lambda = lambda: triton_matmul("triton-dot", a, b, bias)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -410,9 +414,11 @@ def test_performance(M: int, N: int, K: int, use_bias: bool, dtype_str: str, req
         "provider": "triton-dot"
     }
 
+    baseline_callable = lambda: torch_matmul(a, b, bias)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_gemm_gbps,
-                              tflops_calculator=calculate_gemm_tflops)
+                              tflops_calculator=calculate_gemm_tflops,
+                              baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

@@ -90,7 +90,11 @@ import itertools
 import re
 
 from torch.testing import assert_close
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 import triton
 import triton.language as tl
@@ -317,7 +321,7 @@ def test_performance(M, N, K, NUM_CTAS, NUM_WARPS, TRANS_A, TRANS_B, OUTPUT_TYPE
         NUM_WARPS, (OUTPUT_TYPE == "float16"), USE_TMA_EPILOGUE
     )
 
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -328,9 +332,11 @@ def test_performance(M, N, K, NUM_CTAS, NUM_WARPS, TRANS_A, TRANS_B, OUTPUT_TYPE
         "input_dtype_str": "fp16" # Hardcoded based on original test's a,b creation
     }
     
+    baseline_callable = lambda: torch.matmul(a_host, b_host)
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_gemm_no_scf_gbps,
-                                            tflops_calculator=calculate_gemm_no_scf_tflops)
+                                            tflops_calculator=calculate_gemm_no_scf_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

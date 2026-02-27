@@ -22,7 +22,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -167,7 +171,7 @@ def test_performance(size_i_k, size_j_k, size_g_k, output_dtype_str, request, de
     )
 
     # This kernel is very fast for small sizes, might need many reps.
-    bench_config = do_bench_config(warm_up=100, repetition=1000 if size_i_k*size_j_k < 256*256 else 200) 
+    bench_config = do_bench_config(warm_up=10, repetition=100) 
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -179,9 +183,15 @@ def test_performance(size_i_k, size_j_k, size_g_k, output_dtype_str, request, de
         "num_warps": 4 
     }
     
+    # PyTorch baseline: generate the expected swizzle2d output using arange + reshape
+    # The correctness test compares against a hardcoded expected_order tensor.
+    # The baseline generates a sequential index tensor (the input to swizzle mapping).
+    baseline_callable = lambda: torch.arange(size_i_k * size_j_k, dtype=current_out_dtype, device=device).reshape(size_i_k, size_j_k)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_swizzle2d_gbps,
-                                            tflops_calculator=calculate_swizzle2d_tflops)
+                                            tflops_calculator=calculate_swizzle2d_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

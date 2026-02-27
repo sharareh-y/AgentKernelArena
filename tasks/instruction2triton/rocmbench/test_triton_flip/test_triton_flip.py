@@ -13,7 +13,7 @@ def flip_kernel(X, Z, N: tl.constexpr, M: tl.constexpr):
     offy = tl.arange(0, N) * M
     off2d = offx[None, :] + offy[:, None]
     x = tl.load(X + off2d)
-    x = tl.flip(x)
+    x = tl.flip(x, 1)
     tl.store(Z + off2d, x)
 
 
@@ -25,7 +25,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 
@@ -160,7 +164,8 @@ OP_NAME_FOR_BENCHMARK = "triton_flip_perf"
 # Kernel's N and M are constexpr. We will parametrize these.
 FLIP_TILE_SHAPES_FOR_PERF = [
     # N_rows_const, M_cols_const (for the single tile processed by kernel)
-    (128, 512), (1024, 64)
+    # Shapes must satisfy N*M*4 <= 65536 (shared memory limit) for all dtypes and warp counts
+    (128, 64), (64, 128)  # N*M=8192, 32KB for int32 — safe for all dtypes and num_warps
 ]
 FLIP_DTYPES_FOR_PERF = ['int32', 'float16', 'float32', 'bfloat16'] 
 FLIP_NUM_WARPS_FOR_PERF = [1, 2, 4] 
@@ -189,7 +194,7 @@ def test_performance(N_const, M_const, dtype_str, num_warps_launch, request, dev
         x_perf_tensor, z_perf_buffer, N_const, M_const, num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=100, repetition=1000) # Simple kernel
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Simple kernel
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -200,9 +205,13 @@ def test_performance(N_const, M_const, dtype_str, num_warps_launch, request, dev
         "num_warps": num_warps_launch
     }
     
+    # PyTorch baseline: flip along columns (dim=1)
+    baseline_callable = lambda: torch.flip(x_perf_tensor, dims=(1,))
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_flip_gbps,
-                                            tflops_calculator=calculate_flip_tflops)
+                                            tflops_calculator=calculate_flip_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

@@ -30,7 +30,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -218,7 +222,7 @@ def test_performance(dtypes_str_tuple, n, padding_option, request, device='cuda'
     )
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=50, repetition=200) # Copy is fast
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Copy is fast
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -229,9 +233,14 @@ def test_performance(dtypes_str_tuple, n, padding_option, request, device='cuda'
         "BLOCK_SIZE": FIXED_BLOCK_SIZE_FOR_PERF # Log the fixed block size
     }
 
+    # PyTorch baseline: tensor copy
+    dst_baseline = torch.empty_like(a)
+    baseline_callable = lambda: dst_baseline.copy_(a)
+
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_block_copy_gbps,
-                              tflops_calculator=None) # TFLOPS not relevant
+                              tflops_calculator=None, # TFLOPS not relevant
+                              baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

@@ -5,7 +5,7 @@ correctness_command:
 performance_command:
 - pytest -vv -x --maxfail=1 naive_softmax.py -k "test_performance or test_save_performance_results"
 task_type: instruction2triton
-task_result_template: null
+task_result_template: task_result_template.yaml
 prompt:
   cheatsheet: null
   instructions: "\nYou are an expert in triton programming language. You will be given\
@@ -57,7 +57,6 @@ prompt:
     \ + row_idx * row_stride\n    output_ptrs = output_row_start_ptr + col_offsets\n\
     \    tl.store(output_ptrs, softmax_output, mask=mask)\n\n"
   source_code: null
-source_file_path:
-- null
+source_file_path: []
 target_kernel_functions:
 - softmax_kernel_naive

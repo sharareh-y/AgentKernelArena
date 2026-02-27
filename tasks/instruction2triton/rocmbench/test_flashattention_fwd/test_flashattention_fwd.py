@@ -144,7 +144,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -322,7 +326,7 @@ def test_performance(Z, H, N_CTX, D_HEAD, dtype_str, request):
 
     op_lambda = lambda: attention(q, k, v, sm_scale)
 
-    bench_config = do_bench_config(warm_up=10, repetition=50) 
+    bench_config = do_bench_config(warm_up=10, repetition=100) 
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -331,9 +335,17 @@ def test_performance(Z, H, N_CTX, D_HEAD, dtype_str, request):
         "dtype_str": dtype_str, "sm_scale": sm_scale
     }
     
+    causal_mask = torch.tril(torch.ones((N_CTX, N_CTX), device="cuda"))
+    def _baseline():
+        p = torch.matmul(q, k.transpose(2, 3)) * sm_scale
+        p[:, :, causal_mask == 0] = float("-inf")
+        p = torch.softmax(p.float(), dim=-1).half()
+        return torch.matmul(p, v)
+    baseline_callable = _baseline
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_flash_attention_fwd_gbps,
-                                            tflops_calculator=calculate_flash_attention_fwd_tflops)
+                                            tflops_calculator=calculate_flash_attention_fwd_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

@@ -57,7 +57,11 @@ import os
 import pytest
 from numpy.random import RandomState
 
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -308,7 +312,7 @@ def test_performance(M, N, K, block_m, block_n, block_k, dtype_str, request):
     op_lambda = lambda: batched_vecmat_triton_wrapper(A_tri, B_tri, block_m, block_n, block_k)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -319,9 +323,11 @@ def test_performance(M, N, K, block_m, block_n, block_k, dtype_str, request):
         "dtype_str": dtype_str
     }
 
+    baseline_callable = lambda: torch.sum(A_tri[:, None, :] * B_tri, dim=2)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_batched_vecmat_gbps,
-                              tflops_calculator=calculate_batched_vecmat_tflops)
+                              tflops_calculator=calculate_batched_vecmat_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

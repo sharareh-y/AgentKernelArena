@@ -97,7 +97,11 @@ import numpy as np
 import random
 import torch 
 import os
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 ########################## HELPER utils ##########################
 TORCH_HAS_FP8E4 = hasattr(torch, 'float8_e4m3fnuz')
@@ -336,7 +340,7 @@ def test_performance(test_config, request):
     )
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=10, repetition=50) # Adjust reps as needed
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Adjust reps as needed
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -345,9 +349,11 @@ def test_performance(test_config, request):
         "BATCH": BATCH, "M_seqlen": M_seqlen, "N_kv_seqlen": N_kv_seqlen, "D_head": D_head,
         "dtype_str": dtype_str, "msize_arg": msize_arg
     }
+    baseline_callable = lambda: torch.matmul(torch.matmul(q_host, k_host.transpose(1, 2)), v_host_for_call.transpose(1, 2))
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_chained_dot_gbps,
-                              tflops_calculator=calculate_chained_dot_tflops)
+                              tflops_calculator=calculate_chained_dot_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

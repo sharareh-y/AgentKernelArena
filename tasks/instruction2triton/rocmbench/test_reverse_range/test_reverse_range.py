@@ -23,7 +23,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -146,7 +150,7 @@ def test_performance(dtype_str, num_warps_launch, request, device='cuda'):
         data_perf, res_perf_buffer, num_warps_launch
     )
 
-    bench_config = do_bench_config(warm_up=100, repetition=1000) # Simple kernel, more reps
+    bench_config = do_bench_config(warm_up=10, repetition=100) # Simple kernel, more reps
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -156,9 +160,13 @@ def test_performance(dtype_str, num_warps_launch, request, device='cuda'):
         "num_warps": num_warps_launch
     }
     
+    # PyTorch baseline: reverse 1D tensor (matching correctness ref: torch.flip(data[1:513], [0]))
+    baseline_callable = lambda: torch.flip(data_perf[1:KERNEL_FIXED_SIZE+1], [0])
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_reverse_range_gbps,
-                                            tflops_calculator=calculate_reverse_range_tflops)
+                                            tflops_calculator=calculate_reverse_range_tflops,
+                                            baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

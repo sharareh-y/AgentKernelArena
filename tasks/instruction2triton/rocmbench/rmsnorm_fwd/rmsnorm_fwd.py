@@ -159,7 +159,11 @@ from itertools import product
 import triton
 import triton.language as tl
 
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 ######################################## HELPERS for Eval ######################################## 
@@ -483,7 +487,7 @@ def test_performance(M, N, ZERO_CENTERED_GAMMA, in_dtype_str, out_dtype_str, req
     )
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -495,9 +499,11 @@ def test_performance(M, N, ZERO_CENTERED_GAMMA, in_dtype_str, out_dtype_str, req
         "blk_size_fwd": blk_size_fwd, "USE_BLOCKED_fwd": USE_BLOCKED_fwd, "NUM_PRGMS_fwd": NUM_PRGMS_fwd
     }
 
+    baseline_callable = lambda: torch_rmsnorm_fwd(x, g, ZERO_CENTERED_GAMMA, current_dtype, eps)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_rmsnorm_fwd_gbps,
-                              tflops_calculator=calculate_rmsnorm_fwd_tflops)
+                              tflops_calculator=calculate_rmsnorm_fwd_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

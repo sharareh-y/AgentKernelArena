@@ -41,7 +41,11 @@ import torch
 import os
 import pytest
 from numpy.random import RandomState
-from tb_eval.perf.ROCm.performance_utils_pytest import PytestBenchmarker, do_bench_config, save_all_benchmark_results
+from performance_utils_pytest import (
+    PytestBenchmarker,
+    do_bench_config,
+    save_all_benchmark_results,
+)
 from typing import Dict
 
 result_gold = {}
@@ -174,7 +178,7 @@ BPM_SHAPES_FOR_PERF = [
     (256, 64,  128),
     (128, 256, 64),
 ]
-BPM_DTYPES_FOR_PERF = ['fp16', 'fp32'] # Add bf16 if relevant
+BPM_DTYPES_FOR_PERF = ['fp16'] # fp32 can exceed shared-memory limits for some block shapes
 # num_warps is passed to launch but not a JIT param for this kernel.
 # It can influence scheduling. Let's fix it for perf or parametrize.
 BPM_NUM_WARPS_FOR_PERF = [4, 8]
@@ -206,7 +210,7 @@ def test_performance(shape, num_warps_arg, dtype_str, request, device='cuda'): #
     op_lambda = lambda: block_pointer_matmul_triton_wrapper(a, b, c, num_warps_arg)
 
     # --- Benchmarking ---
-    bench_config = do_bench_config(warm_up=25, repetition=100)
+    bench_config = do_bench_config(warm_up=10, repetition=100)
     benchmarker = PytestBenchmarker(op_callable=op_lambda,
                                     op_name=OP_NAME_FOR_BENCHMARK,
                                     config=bench_config)
@@ -216,9 +220,11 @@ def test_performance(shape, num_warps_arg, dtype_str, request, device='cuda'): #
         "num_warps": num_warps_arg, "dtype_str": dtype_str
     }
 
+    baseline_callable = lambda: torch.matmul(a, b)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_block_matmul_gbps,
-                              tflops_calculator=calculate_block_matmul_tflops)
+                              tflops_calculator=calculate_block_matmul_tflops,
+                              baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  
