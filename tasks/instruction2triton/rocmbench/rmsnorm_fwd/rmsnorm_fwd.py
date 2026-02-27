@@ -499,9 +499,11 @@ def test_performance(M, N, ZERO_CENTERED_GAMMA, in_dtype_str, out_dtype_str, req
         "blk_size_fwd": blk_size_fwd, "USE_BLOCKED_fwd": USE_BLOCKED_fwd, "NUM_PRGMS_fwd": NUM_PRGMS_fwd
     }
 
+    baseline_callable = lambda: torch_rmsnorm_fwd(x, g, ZERO_CENTERED_GAMMA, current_dtype, eps)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_rmsnorm_fwd_gbps,
-                              tflops_calculator=calculate_rmsnorm_fwd_tflops)
+                              tflops_calculator=calculate_rmsnorm_fwd_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

@@ -662,9 +662,11 @@ def test_performance(M, N, K, col_a, col_b, in_dtype_a_str, in_dtype_b_str, out_
         "triton_scale_mode": current_scale_a8_b8, "activation": current_activation
     }
 
+    baseline_callable = lambda: torch.matmul(a, b)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_gemm_gbps,
-                              tflops_calculator=calculate_gemm_tflops)
+                              tflops_calculator=calculate_gemm_tflops,
+                              baseline_callable=baseline_callable)
   
 def get_type(provider):  
     res = re.findall(r'\(.*?\)', provider)  

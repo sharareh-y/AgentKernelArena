@@ -270,9 +270,11 @@ def test_performance(test_params_dict, dtype_str, request):
         "dtype_str": dtype_str, "num_warps": num_warps_launch
     }
     
+    baseline_callable = lambda: torch.matmul(torch.matmul(A, B.T), C_mat)
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_gemm_fusion_gbps,
-                                            tflops_calculator=calculate_gemm_fusion_tflops)
+                                            tflops_calculator=calculate_gemm_fusion_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 

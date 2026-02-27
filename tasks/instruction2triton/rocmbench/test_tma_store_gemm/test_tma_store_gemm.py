@@ -263,9 +263,11 @@ def test_performance(M, N, K, NUM_CTAS_param, NUM_WARPS_param, TRANS_A, TRANS_B,
         "input_dtype_str": "fp16" # For the calculator
     }
     
+    baseline_callable = lambda: torch.matmul(a, b)
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_tma_gemm_gbps,
-                                            tflops_calculator=calculate_tma_gemm_tflops)
+                                            tflops_calculator=calculate_tma_gemm_tflops,
+                                            baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

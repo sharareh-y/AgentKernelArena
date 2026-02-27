@@ -335,9 +335,17 @@ def test_performance(Z, H, N_CTX, D_HEAD, dtype_str, request):
         "dtype_str": dtype_str, "sm_scale": sm_scale
     }
     
+    causal_mask = torch.tril(torch.ones((N_CTX, N_CTX), device="cuda"))
+    def _baseline():
+        p = torch.matmul(q, k.transpose(2, 3)) * sm_scale
+        p[:, :, causal_mask == 0] = float("-inf")
+        p = torch.softmax(p.float(), dim=-1).half()
+        return torch.matmul(p, v)
+    baseline_callable = _baseline
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_flash_attention_fwd_gbps,
-                                            tflops_calculator=calculate_flash_attention_fwd_tflops)
+                                            tflops_calculator=calculate_flash_attention_fwd_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

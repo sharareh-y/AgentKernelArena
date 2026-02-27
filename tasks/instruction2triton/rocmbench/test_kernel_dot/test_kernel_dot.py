@@ -230,9 +230,14 @@ def test_performance(dtype_str, num_warps_launch, request):
         "num_warps": num_warps_launch
     }
     
+    # PyTorch baseline: matrix multiplication (matching correctness ref: torch.matmul(z_in, z_in))
+    Z_baseline = Z_tensor.clone()
+    baseline_callable = lambda: torch.matmul(Z_baseline, Z_baseline)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_kernel_dot_gbps,
-                                            tflops_calculator=calculate_kernel_dot_tflops)
+                                            tflops_calculator=calculate_kernel_dot_tflops,
+                                            baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

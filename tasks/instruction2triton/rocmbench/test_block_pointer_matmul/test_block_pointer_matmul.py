@@ -220,9 +220,11 @@ def test_performance(shape, num_warps_arg, dtype_str, request, device='cuda'): #
         "num_warps": num_warps_arg, "dtype_str": dtype_str
     }
 
+    baseline_callable = lambda: torch.matmul(a, b)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_block_matmul_gbps,
-                              tflops_calculator=calculate_block_matmul_tflops)
+                              tflops_calculator=calculate_block_matmul_tflops,
+                              baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

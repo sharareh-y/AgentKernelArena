@@ -312,9 +312,13 @@ def test_performance(size_val, seed_val, output_dtype_str, const_seed_bool, requ
         "num_warps": 4 
     }
     
+    # PyTorch baseline: generate random integers
+    baseline_callable = lambda: torch.randint(0, 2**31, (size_val,), dtype=current_out_dtype, device=device)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_randint_gbps,
-                                            tflops_calculator=calculate_randint_tflops)
+                                            tflops_calculator=calculate_randint_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

@@ -233,9 +233,14 @@ def test_performance(dtypes_str_tuple, n, padding_option, request, device='cuda'
         "BLOCK_SIZE": FIXED_BLOCK_SIZE_FOR_PERF # Log the fixed block size
     }
 
+    # PyTorch baseline: tensor copy
+    dst_baseline = torch.empty_like(a)
+    baseline_callable = lambda: dst_baseline.copy_(a)
+
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_block_copy_gbps,
-                              tflops_calculator=None) # TFLOPS not relevant
+                              tflops_calculator=None, # TFLOPS not relevant
+                              baseline_callable=baseline_callable)
 
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

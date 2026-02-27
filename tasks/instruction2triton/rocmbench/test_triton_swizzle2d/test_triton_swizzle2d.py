@@ -183,9 +183,15 @@ def test_performance(size_i_k, size_j_k, size_g_k, output_dtype_str, request, de
         "num_warps": 4 
     }
     
+    # PyTorch baseline: generate the expected swizzle2d output using arange + reshape
+    # The correctness test compares against a hardcoded expected_order tensor.
+    # The baseline generates a sequential index tensor (the input to swizzle mapping).
+    baseline_callable = lambda: torch.arange(size_i_k * size_j_k, dtype=current_out_dtype, device=device).reshape(size_i_k, size_j_k)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_swizzle2d_gbps,
-                                            tflops_calculator=calculate_swizzle2d_tflops)
+                                            tflops_calculator=calculate_swizzle2d_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

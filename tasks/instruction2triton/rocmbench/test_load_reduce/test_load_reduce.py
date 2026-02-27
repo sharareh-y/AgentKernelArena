@@ -208,9 +208,13 @@ def test_performance(block_m_const, block_n_const, dtype_str, request): # Added 
         # "num_warps": num_warps_launch # if parametrized
     }
     
+    # PyTorch baseline: max reduction along dim=1 (matching correctness ref: x.max(dim=1)[0])
+    baseline_callable = lambda: x.max(dim=1)[0]
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_load_reduce_gbps,
-                                            tflops_calculator=calculate_load_reduce_tflops)
+                                            tflops_calculator=calculate_load_reduce_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

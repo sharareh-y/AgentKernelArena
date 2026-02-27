@@ -910,9 +910,13 @@ def test_performance(M_orig, N, K, top_k, E, routed_weight, dtype_str, request):
         "GROUP_SIZE_M": metadata.config['GROUP_SIZE_M'],
     }
 
+    # MoE dense baseline (b_indexed = b[topk_ids]) OOMs for large M (224+ GB).
+    # Sparse routing is the entire point of MoE, so no PyTorch baseline is applicable.
+    baseline_callable = None
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_moe_gemm_gbps,
-                              tflops_calculator=calculate_moe_gemm_tflops)
+                              tflops_calculator=calculate_moe_gemm_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

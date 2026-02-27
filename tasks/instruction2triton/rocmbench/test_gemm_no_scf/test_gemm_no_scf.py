@@ -332,9 +332,11 @@ def test_performance(M, N, K, NUM_CTAS, NUM_WARPS, TRANS_A, TRANS_B, OUTPUT_TYPE
         "input_dtype_str": "fp16" # Hardcoded based on original test's a,b creation
     }
     
+    baseline_callable = lambda: torch.matmul(a_host, b_host)
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_gemm_no_scf_gbps,
-                                            tflops_calculator=calculate_gemm_no_scf_tflops)
+                                            tflops_calculator=calculate_gemm_no_scf_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

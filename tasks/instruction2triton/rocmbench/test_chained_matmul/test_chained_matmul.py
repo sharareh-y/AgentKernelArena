@@ -302,9 +302,11 @@ def test_performance(test_params_dict, dtype_str, request):
         "dtype_str": dtype_str
     }
 
+    baseline_callable = lambda: torch.matmul(torch.matmul(a, b.T), c_mat)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_chained_matmul_gbps,
-                              tflops_calculator=calculate_chained_matmul_tflops)
+                              tflops_calculator=calculate_chained_matmul_tflops,
+                              baseline_callable=baseline_callable)
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  
 def test_save_results():  

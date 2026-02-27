@@ -5,7 +5,7 @@ correctness_command:
 performance_command:
 - pytest -vv -x --maxfail=1 test_random_int.py -k "test_performance or test_save_performance_results"
 task_type: instruction2triton
-task_result_template: null
+task_result_template: task_result_template.yaml
 prompt:
   cheatsheet: null
   instructions: "\nYou are an expert in triton programming language. You will be given\
@@ -55,7 +55,6 @@ prompt:
     \                                to initialize its state.\n    \"\"\"\n    # Your\
     \ code here\n\n"
   source_code: null
-source_file_path:
-- null
+source_file_path: []
 target_kernel_functions:
 - randint_kernel_runtime_seed,randint_kernel_const_seed

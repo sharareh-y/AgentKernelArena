@@ -296,9 +296,13 @@ def test_performance(size_val, seed_val, offset_tl_dtype_str, const_seed_bool, r
         "num_warps": 4 # Log the fixed num_warps
     }
     
+    # PyTorch baseline: generate random uniform values [0, 1)
+    baseline_callable = lambda: torch.rand(size_val, dtype=torch.float32, device=device)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_randn_gbps,
-                                            tflops_calculator=calculate_randn_tflops)
+                                            tflops_calculator=calculate_randn_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

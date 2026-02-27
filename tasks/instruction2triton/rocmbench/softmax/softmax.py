@@ -373,9 +373,11 @@ def test_performance(M, N, dtype_str, request): # Renamed from test_softmax
         "LOGGED_BLOCK_SIZE_heuristic": BLOCK_SIZE_log # Log the heuristic block size
     }
 
+    baseline_callable = lambda: torch.softmax(x, dim=1)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_softmax_fwd_gbps,
-                              tflops_calculator=calculate_softmax_fwd_tflops)
+                              tflops_calculator=calculate_softmax_fwd_tflops,
+                              baseline_callable=baseline_callable)
 
 
 def model_benchmark_configs(args):

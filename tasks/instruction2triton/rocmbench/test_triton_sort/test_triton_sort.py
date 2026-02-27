@@ -231,9 +231,13 @@ def test_performance(N_tile_rows, M_tile_cols, descending_val, dtype_str, reques
         "num_warps": 4 # Log the fixed num_warps
     }
     
+    # PyTorch baseline: sort along dim=1
+    baseline_callable = lambda: torch.sort(x_perf_tensor, dim=1, descending=descending_val)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_sort_gbps,
-                                            tflops_calculator=calculate_sort_tflops)
+                                            tflops_calculator=calculate_sort_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 

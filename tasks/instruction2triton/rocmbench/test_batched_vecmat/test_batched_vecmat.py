@@ -323,9 +323,11 @@ def test_performance(M, N, K, block_m, block_n, block_k, dtype_str, request):
         "dtype_str": dtype_str
     }
 
+    baseline_callable = lambda: torch.sum(A_tri[:, None, :] * B_tri, dim=2)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_batched_vecmat_gbps,
-                              tflops_calculator=calculate_batched_vecmat_tflops)
+                              tflops_calculator=calculate_batched_vecmat_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

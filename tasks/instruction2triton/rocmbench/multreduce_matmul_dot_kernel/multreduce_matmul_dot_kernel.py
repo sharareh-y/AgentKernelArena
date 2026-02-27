@@ -414,9 +414,11 @@ def test_performance(M: int, N: int, K: int, use_bias: bool, dtype_str: str, req
         "provider": "triton-dot"
     }
 
+    baseline_callable = lambda: torch_matmul(a, b, bias)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_gemm_gbps,
-                              tflops_calculator=calculate_gemm_tflops)
+                              tflops_calculator=calculate_gemm_tflops,
+                              baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     

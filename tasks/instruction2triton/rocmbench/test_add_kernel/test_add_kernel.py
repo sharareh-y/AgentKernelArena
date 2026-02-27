@@ -183,9 +183,14 @@ def test_performance(SIZE, BLOCK_SIZE_ARG, dtype_str, request): # Function accep
     # current_params_for_calculators = {"SIZE": SIZE, "BLOCK_SIZE": BLOCK_SIZE_ARG, "dtype_str": dtype_str}
 
 
+    # PyTorch baseline: element-wise addition
+    output_baseline = torch.empty_like(output)
+    baseline_callable = lambda: torch.add(x, y, out=output_baseline)
+
     benchmarker.run_benchmark(current_params_dict=current_params_for_calculators,
                               gbps_calculator=calculate_add_gbps,
-                              tflops_calculator=calculate_add_tflops)
+                              tflops_calculator=calculate_add_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

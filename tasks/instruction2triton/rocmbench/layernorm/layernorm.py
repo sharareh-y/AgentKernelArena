@@ -455,9 +455,11 @@ def test_performance(M, N, dtype_str, request):
         "M": M, "N": N, "eps": eps, "dtype_str": dtype_str
     }
 
+    baseline_callable = lambda: torch.nn.functional.layer_norm(x, normalized_shape_arg, w, b, eps)
     benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                               gbps_calculator=calculate_layernorm_gbps,
-                              tflops_calculator=calculate_layernorm_tflops)
+                              tflops_calculator=calculate_layernorm_tflops,
+                              baseline_callable=baseline_callable)
     
 ######################################## HELPERS for Eval ########################################     
 # --- Pytest hook to save the dictionary at the end of the session ---  

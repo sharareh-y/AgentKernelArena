@@ -512,9 +512,11 @@ def test_performance(m_n_k_shape, block_config, use_bias_flag, dtype_str,
         "USE_DOT": False 
     }
     
+    baseline_callable = lambda: torch_matmul(a, b, bias)
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_gemm_gbps,
-                                            tflops_calculator=calculate_gemm_tflops)
+                                            tflops_calculator=calculate_gemm_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 

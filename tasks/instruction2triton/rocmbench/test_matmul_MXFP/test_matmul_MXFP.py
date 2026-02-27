@@ -503,9 +503,11 @@ def test_performance(test_cfg_dict, request):
         "NUM_STAGES": num_stages_const, "num_warps": num_warps_launch
     }
     
+    baseline_callable = (lambda: torch.matmul(a_tensor.to(torch.float16), b_tensor.to(torch.float16))) if not is_scaled_mode else None
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_mxfp_matmul_gbps,
-                                            tflops_calculator=calculate_mxfp_matmul_tflops)
+                                            tflops_calculator=calculate_mxfp_matmul_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 

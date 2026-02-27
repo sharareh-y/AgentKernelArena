@@ -239,9 +239,14 @@ def test_performance(N_val, dtype_str, num_warps_launch, request):
         "num_warps": num_warps_launch
     }
     
+    # PyTorch baseline: element-wise subtraction (matching correctness ref: a - b * 777)
+    output_baseline = torch.empty_like(o_buffer)
+    baseline_callable = lambda: torch.sub(a, b * 777, out=output_baseline)
+
     perf_result = benchmarker.run_benchmark(current_params_dict=current_params_for_logs_and_calc,
                                             gbps_calculator=calculate_kernel_sub_gbps,
-                                            tflops_calculator=calculate_kernel_sub_tflops)
+                                            tflops_calculator=calculate_kernel_sub_tflops,
+                                            baseline_callable=baseline_callable)
 
 
 ######################################## HELPERS for Eval ########################################     
