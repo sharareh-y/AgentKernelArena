@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (4096, 6400),
     (512, 8192),
 ]
-PERF_SHAPE_IDX = 3
 
 
 def run_compile():
@@ -68,34 +67,47 @@ def run_correctness():
 
 def run_performance():
     if not os.path.isfile(BINARY):
-        return -1.0
+        return []
 
-    B, H = TEST_SHAPES[PERF_SHAPE_IDX]
-    try:
-        n_warmup = 10
-        n_iter = 100
+    test_cases = []
+    
+    for shape_idx, (B, H) in enumerate(TEST_SHAPES):
+        try:
+            n_warmup = 10
+            n_iter = 100
 
-        # Warmup runs (ignore results) to reduce one-time effects.
-        for _ in range(n_warmup):
-            subprocess.run(
-                [BINARY, "--B", str(B), "--H", str(H)],
-                capture_output=True, text=True, timeout=60)
+            # Warmup runs (ignore results) to reduce one-time effects.
+            for _ in range(n_warmup):
+                subprocess.run(
+                    [BINARY, "--B", str(B), "--H", str(H)],
+                    capture_output=True, text=True, timeout=60)
 
-        times_ms = []
-        for _ in range(n_iter):
-            result = subprocess.run(
-                [BINARY, "--B", str(B), "--H", str(H)],
-                capture_output=True, text=True, timeout=60)
-            output = result.stdout + result.stderr
-            # Parse "Perf: X.XXX us/launch" from the binary output.
-            match = re.search(r'Perf:\s+([\d.]+)\s+us/launch', output)
-            if not match:
-                return -1.0
-            times_ms.append(float(match.group(1)) / 1000.0)
+            times_ms = []
+            for _ in range(n_iter):
+                result = subprocess.run(
+                    [BINARY, "--B", str(B), "--H", str(H)],
+                    capture_output=True, text=True, timeout=60)
+                output = result.stdout + result.stderr
+                # Parse "Perf: X.XXX us/launch" from the binary output.
+                match = re.search(r'Perf:\s+([\d.]+)\s+us/launch', output)
+                if not match:
+                    continue
+                times_ms.append(float(match.group(1)) / 1000.0)
 
-        return sum(times_ms) / len(times_ms)
-    except Exception:
-        return -1.0
+            if times_ms:
+                elapsed_ms = sum(times_ms) / len(times_ms)
+                test_cases.append({
+                    "test_case_id": f"shape_{shape_idx}",
+                    "execution_time_ms": elapsed_ms,
+                    "params": {
+                        "B": B,
+                        "H": H
+                    }
+                })
+        except Exception:
+            continue
+    
+    return test_cases
 
 
 def main():
@@ -127,21 +139,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        elapsed_ms = run_performance()
-        B, H = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "test_case_0",
-                "execution_time_ms": elapsed_ms,
-                "params": {
-                    "B": B,
-                    "H": H
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Performance: {elapsed_ms:.4f} ms")
+        for case in test_cases:
+            print(f"Performance: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

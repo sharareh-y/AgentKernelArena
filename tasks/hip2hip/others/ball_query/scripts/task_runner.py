@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (2, 4096, 512, 2.0, 16),
     (8, 2048, 256, 0.3, 8),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_reference(min_radius, max_radius, nsample, xyz, center_xyz):
@@ -107,16 +106,44 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from ball_query_wrapper import ball_query
 
-    B, N, M, max_r, nsample = TEST_SHAPES[PERF_SHAPE_IDX]
-    xyz = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
-    center_xyz = torch.randn(B, M, 3, device="cuda", dtype=torch.float32)
+    test_cases = []
+    
+    for shape_idx, (B, N, M, max_r, nsample) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        xyz = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
+        center_xyz = torch.randn(B, M, 3, device="cuda", dtype=torch.float32)
 
-    # Perf1: fixed radius ball query (min=0, max=max_r)
-    ms_fixed = _time_kernel(lambda: ball_query(0.0, max_r, nsample, xyz, center_xyz))
-    # Perf2: dilated/annular ball query (min=max_r, max=max_r*2)
-    ms_dilated = _time_kernel(lambda: ball_query(max_r, max_r * 2, nsample, xyz, center_xyz))
+        # Perf1: fixed radius ball query (min=0, max=max_r)
+        ms_fixed = _time_kernel(lambda: ball_query(0.0, max_r, nsample, xyz, center_xyz))
+        # Perf2: dilated/annular ball query (min=max_r, max=max_r*2)
+        ms_dilated = _time_kernel(lambda: ball_query(max_r, max_r * 2, nsample, xyz, center_xyz))
 
-    return ms_fixed, ms_dilated
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_fixed_radius",
+            "execution_time_ms": ms_fixed,
+            "params": {
+                "B": B,
+                "N": N,
+                "M": M,
+                "max_radius": max_r,
+                "nsample": nsample,
+                "query_type": "fixed_radius"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_dilated_radius",
+            "execution_time_ms": ms_dilated,
+            "params": {
+                "B": B,
+                "N": N,
+                "M": M,
+                "max_radius": max_r,
+                "nsample": nsample,
+                "query_type": "dilated_radius"
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -148,38 +175,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_fixed, ms_dilated = run_performance()
-        B, N, M, max_r, nsample = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_fixed_radius",
-                "execution_time_ms": ms_fixed,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "M": M,
-                    "max_radius": max_r,
-                    "nsample": nsample,
-                    "query_type": "fixed_radius"
-                }
-            },
-            {
-                "test_case_id": "perf2_dilated_radius",
-                "execution_time_ms": ms_dilated,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "M": M,
-                    "max_radius": max_r,
-                    "nsample": nsample,
-                    "query_type": "dilated_radius"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_fixed:.4f} ms")
-        print(f"Perf: {ms_dilated:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

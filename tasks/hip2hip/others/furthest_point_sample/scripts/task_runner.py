@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (8, 1024, 64),
     (2, 2048, 128),
 ]
-PERF_SHAPE_IDX = 3
 
 
 def cpu_fps(points_xyz, num_points):
@@ -108,17 +107,41 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from furthest_point_sample_wrapper import furthest_point_sample, furthest_point_sample_with_dist
 
-    B, N, npoints = TEST_SHAPES[PERF_SHAPE_IDX]
-    xyz = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
+    test_cases = []
+    
+    for shape_idx, (B, N, npoints) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        xyz = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
 
-    # Perf1: FPS on raw point coordinates
-    ms_coords = _time_kernel(lambda: furthest_point_sample(xyz, npoints))
+        # Perf1: FPS on raw point coordinates
+        ms_coords = _time_kernel(lambda: furthest_point_sample(xyz, npoints))
 
-    # Perf2: FPS with pre-computed distance matrix
-    dist_matrix = torch.cdist(xyz, xyz).pow(2)
-    ms_dist = _time_kernel(lambda: furthest_point_sample_with_dist(dist_matrix, npoints))
+        # Perf2: FPS with pre-computed distance matrix
+        dist_matrix = torch.cdist(xyz, xyz).pow(2)
+        ms_dist = _time_kernel(lambda: furthest_point_sample_with_dist(dist_matrix, npoints))
 
-    return ms_coords, ms_dist
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_fps_coords",
+            "execution_time_ms": ms_coords,
+            "params": {
+                "B": B,
+                "N": N,
+                "npoints": npoints,
+                "input_type": "coords"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_fps_dist",
+            "execution_time_ms": ms_dist,
+            "params": {
+                "B": B,
+                "N": N,
+                "npoints": npoints,
+                "input_type": "distance_matrix"
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -150,34 +173,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_coords, ms_dist = run_performance()
-        B, N, npoints = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_fps_coords",
-                "execution_time_ms": ms_coords,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "npoints": npoints,
-                    "input_type": "coords"
-                }
-            },
-            {
-                "test_case_id": "perf2_fps_dist",
-                "execution_time_ms": ms_dist,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "npoints": npoints,
-                    "input_type": "distance_matrix"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_coords:.4f} ms")
-        print(f"Perf: {ms_dist:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

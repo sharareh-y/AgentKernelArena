@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (4, 2000, 3, 8, 32),
     (2, 10000, 6, 16, 8),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def check_point_in_box(point, box):
@@ -148,27 +147,44 @@ def run_correctness():
 def run_performance():
     from roipoint_pool3d_wrapper import RoIPointPool3d
 
-    B, N, C, M, nsample = TEST_SHAPES[PERF_SHAPE_IDX]
-    points, point_features, boxes3d = generate_test_data(B, N, C, M, nsample, device="cuda")
-    points = points.float()
-    point_features = point_features.float()
-    boxes3d = boxes3d.float()
+    test_cases = []
+    
+    for shape_idx, (B, N, C, M, nsample) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        points, point_features, boxes3d = generate_test_data(B, N, C, M, nsample, device="cuda")
+        points = points.float()
+        point_features = point_features.float()
+        boxes3d = boxes3d.float()
 
-    pool = RoIPointPool3d(num_sampled_points=nsample)
+        pool = RoIPointPool3d(num_sampled_points=nsample)
 
-    for _ in range(10):
-        pool(points, point_features, boxes3d)
-    torch.cuda.synchronize()
+        for _ in range(10):
+            pool(points, point_features, boxes3d)
+        torch.cuda.synchronize()
 
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    n_iter = 100
-    start.record()
-    for _ in range(n_iter):
-        pool(points, point_features, boxes3d)
-    end.record()
-    torch.cuda.synchronize()
-    return start.elapsed_time(end) / n_iter
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        n_iter = 100
+        start.record()
+        for _ in range(n_iter):
+            pool(points, point_features, boxes3d)
+        end.record()
+        torch.cuda.synchronize()
+        elapsed_ms = start.elapsed_time(end) / n_iter
+        
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}",
+            "execution_time_ms": elapsed_ms,
+            "params": {
+                "B": B,
+                "N": N,
+                "C": C,
+                "M": M,
+                "nsample": nsample
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -200,24 +216,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        elapsed_ms = run_performance()
-        B, N, C, M, nsample = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "test_case_0",
-                "execution_time_ms": elapsed_ms,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "C": C,
-                    "M": M,
-                    "nsample": nsample
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Performance: {elapsed_ms:.4f} ms")
+        for case in test_cases:
+            print(f"Performance: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

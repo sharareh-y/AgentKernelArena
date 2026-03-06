@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (2048, 1024, 1024),
     (1024, 1024, 2048),
 ]
-PERF_SHAPE_IDX = 3
 
 
 def run_compile():
@@ -66,27 +65,43 @@ def run_correctness():
 
 def run_performance():
     if not os.path.isfile(BINARY):
-        return -1.0
+        return []
 
-    rows, cols, bcols = TEST_SHAPES[PERF_SHAPE_IDX]
-    # Time multiple runs
-    n_warmup = 10
-    n_iter = 100
-    for _ in range(n_warmup):
-        subprocess.run(
-            [BINARY, "--A_rows", str(rows), "--A_cols", str(cols), "--B_cols", str(bcols)],
-            capture_output=True, timeout=60)
+    test_cases = []
+    
+    for shape_idx, (rows, cols, bcols) in enumerate(TEST_SHAPES):
+        try:
+            # Time multiple runs
+            n_warmup = 10
+            n_iter = 100
+            for _ in range(n_warmup):
+                subprocess.run(
+                    [BINARY, "--A_rows", str(rows), "--A_cols", str(cols), "--B_cols", str(bcols)],
+                    capture_output=True, timeout=60)
 
-    total_ms = 0
-    for _ in range(n_iter):
-        t0 = time.perf_counter()
-        subprocess.run(
-            [BINARY, "--A_rows", str(rows), "--A_cols", str(cols), "--B_cols", str(bcols)],
-            capture_output=True, timeout=60)
-        t1 = time.perf_counter()
-        total_ms += (t1 - t0) * 1000
+            total_ms = 0
+            for _ in range(n_iter):
+                t0 = time.perf_counter()
+                subprocess.run(
+                    [BINARY, "--A_rows", str(rows), "--A_cols", str(cols), "--B_cols", str(bcols)],
+                    capture_output=True, timeout=60)
+                t1 = time.perf_counter()
+                total_ms += (t1 - t0) * 1000
 
-    return total_ms / n_iter
+            elapsed_ms = total_ms / n_iter
+            test_cases.append({
+                "test_case_id": f"shape_{shape_idx}",
+                "execution_time_ms": elapsed_ms,
+                "params": {
+                    "A_rows": rows,
+                    "A_cols": cols,
+                    "B_cols": bcols
+                }
+            })
+        except Exception:
+            continue
+    
+    return test_cases
 
 
 def main():
@@ -118,22 +133,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        elapsed_ms = run_performance()
-        A_rows, A_cols, B_cols = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "test_case_0",
-                "execution_time_ms": elapsed_ms,
-                "params": {
-                    "A_rows": A_rows,
-                    "A_cols": A_cols,
-                    "B_cols": B_cols
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Performance: {elapsed_ms:.4f} ms")
+        for case in test_cases:
+            print(f"Performance: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

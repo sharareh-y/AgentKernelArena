@@ -26,7 +26,6 @@ TEST_SHAPES = [
     (2, 128, 2048, 256),
     (16, 3, 4096, 512),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_reference(features, idx):
@@ -92,17 +91,43 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from gather_points_wrapper import gather_points
 
-    B, C, N, M = TEST_SHAPES[PERF_SHAPE_IDX]
-    features_fp32 = torch.randn(B, C, N, device="cuda", dtype=torch.float32)
-    idx = torch.randint(0, N, (B, M), device="cuda", dtype=torch.int32)
-    features_fp16 = features_fp32.half()
+    test_cases = []
+    
+    for shape_idx, (B, C, N, M) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        features_fp32 = torch.randn(B, C, N, device="cuda", dtype=torch.float32)
+        idx = torch.randint(0, N, (B, M), device="cuda", dtype=torch.int32)
+        features_fp16 = features_fp32.half()
 
-    # Perf1: float32 forward
-    ms_fp32 = _time_kernel(lambda: gather_points(features_fp32, idx))
-    # Perf2: float16 forward
-    ms_fp16 = _time_kernel(lambda: gather_points(features_fp16, idx))
+        # Perf1: float32 forward
+        ms_fp32 = _time_kernel(lambda: gather_points(features_fp32, idx))
+        # Perf2: float16 forward
+        ms_fp16 = _time_kernel(lambda: gather_points(features_fp16, idx))
 
-    return ms_fp32, ms_fp16
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_fp32",
+            "execution_time_ms": ms_fp32,
+            "params": {
+                "B": B,
+                "C": C,
+                "N": N,
+                "M": M,
+                "dtype": "fp32"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_fp16",
+            "execution_time_ms": ms_fp16,
+            "params": {
+                "B": B,
+                "C": C,
+                "N": N,
+                "M": M,
+                "dtype": "fp16"
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -134,36 +159,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_fp32, ms_fp16 = run_performance()
-        B, C, N, M = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_fp32",
-                "execution_time_ms": ms_fp32,
-                "params": {
-                    "B": B,
-                    "C": C,
-                    "N": N,
-                    "M": M,
-                    "dtype": "fp32"
-                }
-            },
-            {
-                "test_case_id": "perf2_fp16",
-                "execution_time_ms": ms_fp16,
-                "params": {
-                    "B": B,
-                    "C": C,
-                    "N": N,
-                    "M": M,
-                    "dtype": "fp16"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_fp32:.4f} ms")
-        print(f"Perf: {ms_fp16:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

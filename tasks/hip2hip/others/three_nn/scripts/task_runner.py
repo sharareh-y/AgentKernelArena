@@ -23,7 +23,6 @@ TEST_SHAPES = [
     (2, 512, 4096),
     (4, 2048, 128),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_reference(target, source):
@@ -80,23 +79,38 @@ def run_correctness():
 def run_performance():
     from three_nn_wrapper import three_nn
 
-    B, N, M = TEST_SHAPES[PERF_SHAPE_IDX]
-    target = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
-    source = torch.randn(B, M, 3, device="cuda", dtype=torch.float32)
+    test_cases = []
+    
+    for shape_idx, (B, N, M) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        target = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
+        source = torch.randn(B, M, 3, device="cuda", dtype=torch.float32)
 
-    for _ in range(10):
-        three_nn(target, source)
-    torch.cuda.synchronize()
+        for _ in range(10):
+            three_nn(target, source)
+        torch.cuda.synchronize()
 
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    n_iter = 100
-    start.record()
-    for _ in range(n_iter):
-        three_nn(target, source)
-    end.record()
-    torch.cuda.synchronize()
-    return start.elapsed_time(end) / n_iter
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        n_iter = 100
+        start.record()
+        for _ in range(n_iter):
+            three_nn(target, source)
+        end.record()
+        torch.cuda.synchronize()
+        elapsed_ms = start.elapsed_time(end) / n_iter
+        
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}",
+            "execution_time_ms": elapsed_ms,
+            "params": {
+                "B": B,
+                "N_target": N,
+                "M_source": M
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -128,22 +142,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        elapsed_ms = run_performance()
-        B, N, M = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "test_case_0",
-                "execution_time_ms": elapsed_ms,
-                "params": {
-                    "B": B,
-                    "N_target": N,
-                    "M_source": M
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Performance: {elapsed_ms:.4f} ms")
+        for case in test_cases:
+            print(f"Performance: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

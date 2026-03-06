@@ -23,7 +23,6 @@ TEST_SHAPES = [
     (2, 128, 1024, 512),
     (4, 16, 4096, 1024),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_reference(features, idx, weight):
@@ -69,25 +68,41 @@ def run_correctness():
 def run_performance():
     from three_interpolate_wrapper import three_interpolate
 
-    B, C, M, N = TEST_SHAPES[PERF_SHAPE_IDX]
-    features = torch.randn(B, C, M, device="cuda", dtype=torch.float32)
-    idx = torch.randint(0, M, (B, N, 3), device="cuda", dtype=torch.int32)
-    weight = torch.rand(B, N, 3, device="cuda", dtype=torch.float32)
-    weight = weight / weight.sum(dim=-1, keepdim=True)
+    test_cases = []
+    
+    for shape_idx, (B, C, M, N) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        features = torch.randn(B, C, M, device="cuda", dtype=torch.float32)
+        idx = torch.randint(0, M, (B, N, 3), device="cuda", dtype=torch.int32)
+        weight = torch.rand(B, N, 3, device="cuda", dtype=torch.float32)
+        weight = weight / weight.sum(dim=-1, keepdim=True)
 
-    for _ in range(10):
-        three_interpolate(features, idx, weight)
-    torch.cuda.synchronize()
+        for _ in range(10):
+            three_interpolate(features, idx, weight)
+        torch.cuda.synchronize()
 
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    n_iter = 100
-    start.record()
-    for _ in range(n_iter):
-        three_interpolate(features, idx, weight)
-    end.record()
-    torch.cuda.synchronize()
-    return start.elapsed_time(end) / n_iter
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        n_iter = 100
+        start.record()
+        for _ in range(n_iter):
+            three_interpolate(features, idx, weight)
+        end.record()
+        torch.cuda.synchronize()
+        elapsed_ms = start.elapsed_time(end) / n_iter
+        
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}",
+            "execution_time_ms": elapsed_ms,
+            "params": {
+                "B": B,
+                "C": C,
+                "M_source": M,
+                "N_query": N
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -119,23 +134,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        elapsed_ms = run_performance()
-        B, C, M, N = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "test_case_0",
-                "execution_time_ms": elapsed_ms,
-                "params": {
-                    "B": B,
-                    "C": C,
-                    "M_source": M,
-                    "N_query": N
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Performance: {elapsed_ms:.4f} ms")
+        for case in test_cases:
+            print(f"Performance: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

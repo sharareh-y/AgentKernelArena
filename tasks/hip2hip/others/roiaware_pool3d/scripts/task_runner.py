@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (4, 2000, 6, 4),
     (16, 3000, 3, 2),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_roiaware_pool3d(rois, pts, pts_feature, out_size, mode='max'):
@@ -172,21 +171,47 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from roiaware_pool3d_wrapper import RoIAwarePool3d
 
-    num_rois, num_pts, C, out_size = TEST_SHAPES[PERF_SHAPE_IDX]
-    rois, pts, pts_feature = generate_test_data(num_rois, num_pts, C, device="cuda")
-    rois = rois.float()
-    pts = pts.float()
-    pts_feature = pts_feature.float()
+    test_cases = []
+    
+    for shape_idx, (num_rois, num_pts, C, out_size) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        rois, pts, pts_feature = generate_test_data(num_rois, num_pts, C, device="cuda")
+        rois = rois.float()
+        pts = pts.float()
+        pts_feature = pts_feature.float()
 
-    pool_max = RoIAwarePool3d(out_size=out_size, max_pts_per_voxel=128, mode='max')
-    pool_avg = RoIAwarePool3d(out_size=out_size, max_pts_per_voxel=128, mode='avg')
+        pool_max = RoIAwarePool3d(out_size=out_size, max_pts_per_voxel=128, mode='max')
+        pool_avg = RoIAwarePool3d(out_size=out_size, max_pts_per_voxel=128, mode='avg')
 
-    # Perf1: max pooling
-    ms_max = _time_kernel(lambda: pool_max(rois, pts, pts_feature))
-    # Perf2: avg pooling
-    ms_avg = _time_kernel(lambda: pool_avg(rois, pts, pts_feature))
+        # Perf1: max pooling
+        ms_max = _time_kernel(lambda: pool_max(rois, pts, pts_feature))
+        # Perf2: avg pooling
+        ms_avg = _time_kernel(lambda: pool_avg(rois, pts, pts_feature))
 
-    return ms_max, ms_avg
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_maxpool",
+            "execution_time_ms": ms_max,
+            "params": {
+                "num_rois": num_rois,
+                "num_pts": num_pts,
+                "C": C,
+                "out_size": out_size,
+                "pool_mode": "max"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_avgpool",
+            "execution_time_ms": ms_avg,
+            "params": {
+                "num_rois": num_rois,
+                "num_pts": num_pts,
+                "C": C,
+                "out_size": out_size,
+                "pool_mode": "avg"
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -218,36 +243,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_max, ms_avg = run_performance()
-        num_rois, num_pts, C, out_size = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_maxpool",
-                "execution_time_ms": ms_max,
-                "params": {
-                    "num_rois": num_rois,
-                    "num_pts": num_pts,
-                    "C": C,
-                    "out_size": out_size,
-                    "pool_mode": "max"
-                }
-            },
-            {
-                "test_case_id": "perf2_avgpool",
-                "execution_time_ms": ms_avg,
-                "params": {
-                    "num_rois": num_rois,
-                    "num_pts": num_pts,
-                    "C": C,
-                    "out_size": out_size,
-                    "pool_mode": "avg"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_max:.4f} ms")
-        print(f"Perf: {ms_avg:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

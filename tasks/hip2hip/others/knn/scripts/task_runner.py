@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (2, 2048, 256, 10),
     (4, 512, 512, 3),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_reference(k, xyz, center_xyz):
@@ -81,22 +80,59 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from knn_wrapper import knn
 
-    B, N, M, k = TEST_SHAPES[PERF_SHAPE_IDX]
-    xyz = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
-    center_xyz = torch.randn(B, M, 3, device="cuda", dtype=torch.float32)
+    test_cases = []
+    
+    for shape_idx, (B, N, M, k) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        xyz = torch.randn(B, N, 3, device="cuda", dtype=torch.float32)
+        center_xyz = torch.randn(B, M, 3, device="cuda", dtype=torch.float32)
 
-    # Perf1: standard layout knn (B, N, 3) query
-    ms_standard = _time_kernel(lambda: knn(k, xyz, center_xyz))
+        # Perf1: standard layout knn (B, N, 3) query
+        ms_standard = _time_kernel(lambda: knn(k, xyz, center_xyz))
 
-    # Perf2: transposed layout knn (B, 3, N) query
-    xyz_t = xyz.transpose(1, 2).contiguous()
-    center_xyz_t = center_xyz.transpose(1, 2).contiguous()
-    ms_transposed = _time_kernel(lambda: knn(k, xyz_t, center_xyz_t, True))
+        # Perf2: transposed layout knn (B, 3, N) query
+        xyz_t = xyz.transpose(1, 2).contiguous()
+        center_xyz_t = center_xyz.transpose(1, 2).contiguous()
+        ms_transposed = _time_kernel(lambda: knn(k, xyz_t, center_xyz_t, True))
 
-    # Perf3: self-query knn (center_xyz = xyz)
-    ms_self = _time_kernel(lambda: knn(k, xyz, xyz))
+        # Perf3: self-query knn (center_xyz = xyz)
+        ms_self = _time_kernel(lambda: knn(k, xyz, xyz))
 
-    return ms_standard, ms_transposed, ms_self
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_standard",
+            "execution_time_ms": ms_standard,
+            "params": {
+                "B": B,
+                "N": N,
+                "M": M,
+                "k": k,
+                "layout": "standard"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_transposed",
+            "execution_time_ms": ms_transposed,
+            "params": {
+                "B": B,
+                "N": N,
+                "M": M,
+                "k": k,
+                "layout": "transposed"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_self_query",
+            "execution_time_ms": ms_self,
+            "params": {
+                "B": B,
+                "N": N,
+                "M": M,
+                "k": k,
+                "layout": "self_query"
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -128,48 +164,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_standard, ms_transposed, ms_self = run_performance()
-        B, N, M, k = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_standard",
-                "execution_time_ms": ms_standard,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "M": M,
-                    "k": k,
-                    "layout": "standard"
-                }
-            },
-            {
-                "test_case_id": "perf2_transposed",
-                "execution_time_ms": ms_transposed,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "M": M,
-                    "k": k,
-                    "layout": "transposed"
-                }
-            },
-            {
-                "test_case_id": "perf3_self_query",
-                "execution_time_ms": ms_self,
-                "params": {
-                    "B": B,
-                    "N": N,
-                    "M": M,
-                    "k": k,
-                    "layout": "self_query"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_standard:.4f} ms")
-        print(f"Perf: {ms_transposed:.4f} ms")
-        print(f"Perf: {ms_self:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

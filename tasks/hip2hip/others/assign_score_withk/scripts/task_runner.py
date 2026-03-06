@@ -23,7 +23,6 @@ TEST_SHAPES = [
     (4, 256, 128, 4, 8, 32),
     (2, 512, 256, 8, 16, 8),
 ]
-PERF_SHAPE_IDX = 2
 
 
 def cpu_assign_score_withk_forward(scores, point_features, center_features, knn_idx):
@@ -148,24 +147,55 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from assign_score_withk_wrapper import assign_score_withk
 
-    B, N0, N1, M, K, O = TEST_SHAPES[PERF_SHAPE_IDX]
-    scores = torch.randn(B, N1, K, M, device="cuda", dtype=torch.float32, requires_grad=True)
-    point_features = torch.randn(B, N0, M, O, device="cuda", dtype=torch.float32, requires_grad=True)
-    center_features = torch.randn(B, N0, M, O, device="cuda", dtype=torch.float32, requires_grad=True)
-    knn_idx = torch.randint(0, N0, (B, N1, K), device="cuda", dtype=torch.int64)
+    test_cases = []
+    
+    for shape_idx, (B, N0, N1, M, K, O) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        scores = torch.randn(B, N1, K, M, device="cuda", dtype=torch.float32, requires_grad=True)
+        point_features = torch.randn(B, N0, M, O, device="cuda", dtype=torch.float32, requires_grad=True)
+        center_features = torch.randn(B, N0, M, O, device="cuda", dtype=torch.float32, requires_grad=True)
+        knn_idx = torch.randint(0, N0, (B, N1, K), device="cuda", dtype=torch.int64)
 
-    # Perf1: forward pass
-    ms_fwd = _time_kernel(lambda: assign_score_withk(scores, point_features, center_features, knn_idx, 'sum'))
+        # Perf1: forward pass
+        ms_fwd = _time_kernel(lambda: assign_score_withk(scores, point_features, center_features, knn_idx, 'sum'))
 
-    # Perf2: backward pass
-    def fwd_bwd():
-        out = assign_score_withk(scores, point_features, center_features, knn_idx, 'sum')
-        loss = out.sum()
-        loss.backward()
+        # Perf2: backward pass
+        def fwd_bwd():
+            out = assign_score_withk(scores, point_features, center_features, knn_idx, 'sum')
+            loss = out.sum()
+            loss.backward()
 
-    ms_fwd_bwd = _time_kernel(fwd_bwd)
+        ms_fwd_bwd = _time_kernel(fwd_bwd)
 
-    return ms_fwd, ms_fwd_bwd
+        # Add test cases for this shape
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_forward",
+            "execution_time_ms": ms_fwd,
+            "params": {
+                "B": B,
+                "N0": N0,
+                "N1": N1,
+                "M": M,
+                "K": K,
+                "O": O,
+                "mode": "forward"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_forward_backward",
+            "execution_time_ms": ms_fwd_bwd,
+            "params": {
+                "B": B,
+                "N0": N0,
+                "N1": N1,
+                "M": M,
+                "K": K,
+                "O": O,
+                "mode": "forward_backward"
+            }
+        })
+
+    return test_cases
 
 
 def main():
@@ -197,40 +227,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_fwd, ms_fwd_bwd = run_performance()
-        B, N0, N1, M, K, O = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_forward",
-                "execution_time_ms": ms_fwd,
-                "params": {
-                    "B": B,
-                    "N0": N0,
-                    "N1": N1,
-                    "M": M,
-                    "K": K,
-                    "O": O,
-                    "mode": "forward"
-                }
-            },
-            {
-                "test_case_id": "perf2_forward_backward",
-                "execution_time_ms": ms_fwd_bwd,
-                "params": {
-                    "B": B,
-                    "N0": N0,
-                    "N1": N1,
-                    "M": M,
-                    "K": K,
-                    "O": O,
-                    "mode": "forward_backward"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_fwd:.4f} ms")
-        print(f"Perf: {ms_fwd_bwd:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 

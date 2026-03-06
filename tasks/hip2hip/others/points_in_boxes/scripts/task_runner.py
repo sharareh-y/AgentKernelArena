@@ -22,7 +22,6 @@ TEST_SHAPES = [
     (2, 16, 1024),
     (8, 4, 512),
 ]
-PERF_SHAPE_IDX = 3
 
 
 def generate_test_data(B, T, M, device="cpu"):
@@ -143,28 +142,76 @@ def _time_kernel(fn, n_warmup=10, n_iter=100):
 def run_performance():
     from points_in_boxes_wrapper import points_in_boxes_part, points_in_boxes_all
 
-    B, T, M = TEST_SHAPES[PERF_SHAPE_IDX]
-    boxes, points = generate_test_data(B, T, M, device="cuda")
-    boxes = boxes.float()
-    points = points.float()
+    test_cases = []
+    
+    for shape_idx, (B, T, M) in enumerate(TEST_SHAPES):
+        torch.manual_seed(42 + shape_idx)
+        boxes, points = generate_test_data(B, T, M, device="cuda")
+        boxes = boxes.float()
+        points = points.float()
 
-    # Generate rotated boxes (larger rotation angles)
-    boxes_rotated = boxes.clone()
-    boxes_rotated[:, :, 6] = torch.rand(B, T, device=boxes.device) * 3.14
+        # Generate rotated boxes (larger rotation angles)
+        boxes_rotated = boxes.clone()
+        boxes_rotated[:, :, 6] = torch.rand(B, T, device=boxes.device) * 3.14
 
-    # Perf1: points_in_boxes_part with standard boxes
-    ms_part_std = _time_kernel(lambda: points_in_boxes_part(points, boxes))
+        # Perf1: points_in_boxes_part with standard boxes
+        ms_part_std = _time_kernel(lambda: points_in_boxes_part(points, boxes))
 
-    # Perf2: points_in_boxes_part with rotated boxes
-    ms_part_rot = _time_kernel(lambda: points_in_boxes_part(points, boxes_rotated))
+        # Perf2: points_in_boxes_part with rotated boxes
+        ms_part_rot = _time_kernel(lambda: points_in_boxes_part(points, boxes_rotated))
 
-    # Perf3: points_in_boxes_all with standard boxes
-    ms_all_std = _time_kernel(lambda: points_in_boxes_all(points, boxes))
+        # Perf3: points_in_boxes_all with standard boxes
+        ms_all_std = _time_kernel(lambda: points_in_boxes_all(points, boxes))
 
-    # Perf4: points_in_boxes_all with rotated boxes
-    ms_all_rot = _time_kernel(lambda: points_in_boxes_all(points, boxes_rotated))
+        # Perf4: points_in_boxes_all with rotated boxes
+        ms_all_rot = _time_kernel(lambda: points_in_boxes_all(points, boxes_rotated))
 
-    return ms_part_std, ms_part_rot, ms_all_std, ms_all_rot
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_part_standard",
+            "execution_time_ms": ms_part_std,
+            "params": {
+                "B": B,
+                "T": T,
+                "M": M,
+                "output_mode": "part",
+                "box_type": "standard"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_part_rotated",
+            "execution_time_ms": ms_part_rot,
+            "params": {
+                "B": B,
+                "T": T,
+                "M": M,
+                "output_mode": "part",
+                "box_type": "rotated"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_all_standard",
+            "execution_time_ms": ms_all_std,
+            "params": {
+                "B": B,
+                "T": T,
+                "M": M,
+                "output_mode": "all",
+                "box_type": "standard"
+            }
+        })
+        test_cases.append({
+            "test_case_id": f"shape_{shape_idx}_all_rotated",
+            "execution_time_ms": ms_all_rot,
+            "params": {
+                "B": B,
+                "T": T,
+                "M": M,
+                "output_mode": "all",
+                "box_type": "rotated"
+            }
+        })
+    
+    return test_cases
 
 
 def main():
@@ -196,60 +243,12 @@ def main():
         sys.exit(0 if ok else 1)
 
     elif args.mode == "performance":
-        ms_part_std, ms_part_rot, ms_all_std, ms_all_rot = run_performance()
-        B, T, M = TEST_SHAPES[PERF_SHAPE_IDX]
-        report = [
-            {
-                "test_case_id": "perf1_part_standard",
-                "execution_time_ms": ms_part_std,
-                "params": {
-                    "B": B,
-                    "T": T,
-                    "M": M,
-                    "output_mode": "part",
-                    "box_type": "standard"
-                }
-            },
-            {
-                "test_case_id": "perf2_part_rotated",
-                "execution_time_ms": ms_part_rot,
-                "params": {
-                    "B": B,
-                    "T": T,
-                    "M": M,
-                    "output_mode": "part",
-                    "box_type": "rotated"
-                }
-            },
-            {
-                "test_case_id": "perf3_all_standard",
-                "execution_time_ms": ms_all_std,
-                "params": {
-                    "B": B,
-                    "T": T,
-                    "M": M,
-                    "output_mode": "all",
-                    "box_type": "standard"
-                }
-            },
-            {
-                "test_case_id": "perf4_all_rotated",
-                "execution_time_ms": ms_all_rot,
-                "params": {
-                    "B": B,
-                    "T": T,
-                    "M": M,
-                    "output_mode": "all",
-                    "box_type": "rotated"
-                }
-            }
-        ]
+        test_cases = run_performance()
+        report = {"test_cases": test_cases}
         with open(os.path.join(build_dir, "performance_report.json"), "w") as f:
             json.dump(report, f, indent=2)
-        print(f"Perf: {ms_part_std:.4f} ms")
-        print(f"Perf: {ms_part_rot:.4f} ms")
-        print(f"Perf: {ms_all_std:.4f} ms")
-        print(f"Perf: {ms_all_rot:.4f} ms")
+        for case in test_cases:
+            print(f"Perf: {case['execution_time_ms']:.4f} ms ({case['test_case_id']})")
         sys.exit(0)
 
 
