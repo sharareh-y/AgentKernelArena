@@ -2,9 +2,11 @@
 import yaml
 import logging
 import csv
+import json
 import sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
+from collections import defaultdict
 try:
     from src.score import resolve_speedup_ratio, task_result_scoring
 except ModuleNotFoundError:
@@ -15,7 +17,11 @@ except ModuleNotFoundError:
     from src.score import resolve_speedup_ratio, task_result_scoring
 
 
-def _build_general_report_lines(aggregate_result: Dict[str, Any], run_metadata: Optional[Dict[str, str]] = None) -> List[str]:
+def _build_general_report_lines(
+    aggregate_result: Dict[str, Any], 
+    run_metadata: Optional[Dict[str, str]] = None,
+    task_type_breakdown: Optional[Dict[str, Dict[str, Any]]] = None
+) -> List[str]:
     """Build report lines shared by logger output and fallback txt output."""
     lines = [
         "=" * 80,
@@ -31,7 +37,7 @@ def _build_general_report_lines(aggregate_result: Dict[str, Any], run_metadata: 
         lines.append("=" * 80)
     
     lines.extend([
-        "Overall Statistics:",
+        "OVERALL STATISTICS:",
         f"  Total Tasks:           {aggregate_result['total_tasks']}",
         f"  Total Score:           {aggregate_result['total_score']:.2f}",
         f"  Average Score:         {aggregate_result['average_score']:.2f}",
@@ -46,7 +52,52 @@ def _build_general_report_lines(aggregate_result: Dict[str, Any], run_metadata: 
         f"  Speedup > 1.0 Rate:    {aggregate_result['speedup_gt_1_rate']:.1f}%",
         f"  Average Speedup:       {aggregate_result['average_speedup']:.2f}x",
         f"  Valid Speedup Count:   {aggregate_result['valid_speedup_count']}",
-        "Task Details:",
+    ])
+    
+    # Add task type breakdowns if available
+    if task_type_breakdown:
+        lines.append("")
+        lines.append("TASK TYPE BREAKDOWN:")
+        lines.append("")
+        
+        # Sort task types for consistent output
+        sorted_types = sorted(task_type_breakdown.keys())
+        for task_type in sorted_types:
+            stats = task_type_breakdown[task_type]
+            lines.append(f"  {task_type} ({stats['count']} tasks):")
+            lines.append(f"    Average Speedup:     {stats['average_speedup']:.2f}x")
+            lines.append(f"    Compilation Pass:     {stats['compilation_pass_count']}/{stats['count']}")
+            lines.append(f"    Compilation Pass Rate: {stats['compilation_pass_rate']:.1f}%")
+            lines.append(f"    Correctness Pass:     {stats['correctness_pass_count']}/{stats['count']}")
+            lines.append(f"    Correctness Pass Rate: {stats['correctness_pass_rate']:.1f}%")
+            lines.append(f"    Speedup > 1.0:        {stats['speedup_gt_1_count']}/{stats['count']} ({stats['speedup_gt_1_rate']:.1f}%)")
+            lines.append(f"    Average Score:        {stats['average_score']:.2f}")
+            lines.append("")
+    
+    # Add total performance summary
+    lines.extend([
+        "TOTAL PERFORMANCE SUMMARY:",
+        f"  Overall Average Speedup:  {aggregate_result['average_speedup']:.2f}x",
+        f"  Tasks with Speedup > 1.0: {aggregate_result['speedup_gt_1_count']}/{aggregate_result['total_tasks']} ({aggregate_result['speedup_gt_1_rate']:.1f}%)",
+    ])
+    
+    # Find best and worst speedups
+    speedups = []
+    for task in aggregate_result.get('task_details', []):
+        if task.get('pass_compilation') and task.get('pass_correctness'):
+            speedup = task.get('speedup_ratio', 0.0)
+            if speedup > 0:
+                speedups.append((speedup, task.get('task_name', '')))
+    
+    if speedups:
+        best_speedup, best_task = max(speedups, key=lambda x: x[0])
+        worst_speedup, worst_task = min(speedups, key=lambda x: x[0])
+        lines.append(f"  Best Speedup:            {best_speedup:.2f}x (task: {best_task})")
+        lines.append(f"  Worst Speedup:           {worst_speedup:.2f}x (task: {worst_task})")
+    
+    lines.extend([
+        "",
+        "TASK DETAILS:",
         "-" * 80,
     ])
 
@@ -118,6 +169,79 @@ def _extract_run_metadata(run_directory: Path) -> Dict[str, str]:
     }
 
 
+def _extract_task_type(task_name: str) -> str:
+    """
+    Extract task type from task name.
+    
+    Task names are like: hip2hip/silu, triton2triton/vllm/xxx, etc.
+    Returns the first part before the first slash, or empty string if no slash.
+    """
+    if isinstance(task_name, str) and "/" in task_name:
+        return task_name.split("/", 1)[0]
+    return ""
+
+
+def _aggregate_by_task_type(task_details: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """
+    Aggregate statistics by task type.
+    
+    Returns a dictionary mapping task_type -> statistics dict.
+    """
+    type_stats = defaultdict(lambda: {
+        'count': 0,
+        'total_score': 0.0,
+        'compilation_pass_count': 0,
+        'correctness_pass_count': 0,
+        'speedup_gt_1_count': 0,
+        'speedup_values': [],
+        'task_names': []
+    })
+    
+    for task in task_details:
+        task_type = _extract_task_type(task.get('task_name', ''))
+        if not task_type:
+            task_type = 'unknown'
+        
+        stats = type_stats[task_type]
+        stats['count'] += 1
+        stats['total_score'] += task.get('score', 0.0)
+        stats['task_names'].append(task.get('task_name', ''))
+        
+        if task.get('pass_compilation', False):
+            stats['compilation_pass_count'] += 1
+        
+        if task.get('pass_correctness', False):
+            stats['correctness_pass_count'] += 1
+        
+        # Check speedup (only if both compilation and correctness passed)
+        if task.get('pass_compilation', False) and task.get('pass_correctness', False):
+            speedup = task.get('speedup_ratio', 0.0)
+            if speedup > 1.0:
+                stats['speedup_gt_1_count'] += 1
+            if speedup > 0:  # Only include valid speedups
+                stats['speedup_values'].append(speedup)
+    
+    # Calculate derived statistics for each task type
+    result = {}
+    for task_type, stats in type_stats.items():
+        count = stats['count']
+        result[task_type] = {
+            'count': count,
+            'total_score': stats['total_score'],
+            'average_score': stats['total_score'] / count if count > 0 else 0.0,
+            'compilation_pass_count': stats['compilation_pass_count'],
+            'compilation_pass_rate': (stats['compilation_pass_count'] / count * 100) if count > 0 else 0.0,
+            'correctness_pass_count': stats['correctness_pass_count'],
+            'correctness_pass_rate': (stats['correctness_pass_count'] / count * 100) if count > 0 else 0.0,
+            'speedup_gt_1_count': stats['speedup_gt_1_count'],
+            'speedup_gt_1_rate': (stats['speedup_gt_1_count'] / count * 100) if count > 0 else 0.0,
+            'average_speedup': (sum(stats['speedup_values']) / len(stats['speedup_values'])) if stats['speedup_values'] else 0.0,
+            'valid_speedup_count': len(stats['speedup_values'])
+        }
+    
+    return result
+
+
 def _ensure_logger(logger: Optional[logging.Logger]) -> logging.Logger:
     """Return a usable logger when caller passes None."""
     if logger is not None:
@@ -147,7 +271,12 @@ def _normalize_workspace_paths(workspace_paths: Union[str, List[str]]) -> List[s
 
 
 
-def general_log_report(aggregate_result: Dict[str, Any], logger: logging.Logger, run_metadata: Optional[Dict[str, str]] = None) -> None:
+def general_log_report(
+    aggregate_result: Dict[str, Any], 
+    logger: logging.Logger, 
+    run_metadata: Optional[Dict[str, str]] = None,
+    task_type_breakdown: Optional[Dict[str, Dict[str, Any]]] = None
+) -> None:
     """
     Log a formatted report using the provided logger.
 
@@ -155,8 +284,9 @@ def general_log_report(aggregate_result: Dict[str, Any], logger: logging.Logger,
         aggregate_result: Report dictionary from post_processing()
         logger: Logger instance to use for output
         run_metadata: Optional dict with timestamp, agent, target_gpu
+        task_type_breakdown: Optional dict with task type statistics
     """
-    for line in _build_general_report_lines(aggregate_result, run_metadata):
+    for line in _build_general_report_lines(aggregate_result, run_metadata, task_type_breakdown):
         logger.info(line)
 
 
@@ -290,6 +420,9 @@ def general_post_processing(
         'task_details': task_details
     }
 
+    # Aggregate statistics by task type
+    task_type_breakdown = _aggregate_by_task_type(task_details)
+
     # Determine run directory and create reports subdirectory
     try:
         run_directory = _get_run_directory(normalized_workspace_paths)
@@ -300,19 +433,45 @@ def general_post_processing(
         reports_directory.mkdir(parents=True, exist_ok=True)
         
         # Write overall_report.txt to reports directory
-        report_lines = _build_general_report_lines(aggregate_result, run_metadata)
+        report_lines = _build_general_report_lines(aggregate_result, run_metadata, task_type_breakdown)
         report_path = reports_directory / "overall_report.txt"
         with open(report_path, "w") as f:
             f.write("\n".join(report_lines) + "\n")
         logger.info(f"Report written to: {report_path}")
         
+        # Write task_type_breakdown.json
+        json_data = {
+            'run_timestamp': run_metadata.get('timestamp', 'unknown'),
+            'agent': run_metadata.get('agent', 'unknown'),
+            'target_gpu': run_metadata.get('target_gpu', 'unknown'),
+            'overall': {
+                'total_tasks': aggregate_result['total_tasks'],
+                'total_score': aggregate_result['total_score'],
+                'average_score': aggregate_result['average_score'],
+                'compilation_pass_count': aggregate_result['compilation_pass_count'],
+                'compilation_pass_rate': aggregate_result['compilation_pass_rate'],
+                'correctness_pass_count': aggregate_result['correctness_pass_count'],
+                'correctness_pass_rate': aggregate_result['correctness_pass_rate'],
+                'speedup_gt_1_count': aggregate_result['speedup_gt_1_count'],
+                'speedup_gt_1_rate': aggregate_result['speedup_gt_1_rate'],
+                'average_speedup': aggregate_result['average_speedup'],
+                'valid_speedup_count': aggregate_result['valid_speedup_count']
+            },
+            'task_types': task_type_breakdown
+        }
+        json_path = reports_directory / "task_type_breakdown.json"
+        with open(json_path, "w") as f:
+            json.dump(json_data, f, indent=2)
+        logger.info(f"Task type breakdown JSON written to: {json_path}")
+        
     except Exception as e:
         logger.warning(f"Could not determine run directory or create reports: {e}")
         run_metadata = None
         reports_directory = None
+        task_type_breakdown = None
     
     # Log report
-    general_log_report(aggregate_result, logger, run_metadata)
+    general_log_report(aggregate_result, logger, run_metadata, task_type_breakdown)
     
     # Export CSV to reports directory
     export_task_results_csv(task_details, normalized_workspace_paths, logger, reports_directory)
