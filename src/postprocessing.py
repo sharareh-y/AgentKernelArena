@@ -15,12 +15,22 @@ except ModuleNotFoundError:
     from src.score import resolve_speedup_ratio, task_result_scoring
 
 
-def _build_general_report_lines(aggregate_result: Dict[str, Any]) -> List[str]:
+def _build_general_report_lines(aggregate_result: Dict[str, Any], run_metadata: Optional[Dict[str, str]] = None) -> List[str]:
     """Build report lines shared by logger output and fallback txt output."""
     lines = [
         "=" * 80,
         "AgentKernelArena Task Results Report",
         "=" * 80,
+    ]
+    
+    # Add run metadata if available
+    if run_metadata:
+        lines.append(f"Run: {run_metadata.get('timestamp', 'unknown')}")
+        lines.append(f"Agent: {run_metadata.get('agent', 'unknown')}")
+        lines.append(f"Target GPU: {run_metadata.get('target_gpu', 'unknown')}")
+        lines.append("=" * 80)
+    
+    lines.extend([
         "Overall Statistics:",
         f"  Total Tasks:           {aggregate_result['total_tasks']}",
         f"  Total Score:           {aggregate_result['total_score']:.2f}",
@@ -38,7 +48,7 @@ def _build_general_report_lines(aggregate_result: Dict[str, Any]) -> List[str]:
         f"  Valid Speedup Count:   {aggregate_result['valid_speedup_count']}",
         "Task Details:",
         "-" * 80,
-    ]
+    ])
 
     for task in aggregate_result["task_details"]:
         status = "PASS" if task["pass_correctness"] else ("PARTIAL" if task["pass_compilation"] else "FAIL")
@@ -52,33 +62,60 @@ def _build_general_report_lines(aggregate_result: Dict[str, Any]) -> List[str]:
     return lines
 
 
-def _write_report_txt_if_log_empty(
-    report_lines: List[str], workspace_paths: List[str], logger: logging.Logger
-) -> None:
-    """Write fallback txt report when logger file output is empty."""
+def _get_run_directory(workspace_paths: List[str]) -> Path:
+    """
+    Extract run directory from workspace paths.
+    
+    Workspace paths are task directories like:
+    workspace_MI300_cursor/run_20250115_143022/task_hip2hip_silu_20250115_143022/
+    
+    Returns the run directory: workspace_MI300_cursor/run_20250115_143022/
+    """
     if not workspace_paths:
-        return
+        raise ValueError("Cannot determine run directory: empty workspace_paths")
+    
+    # First workspace path is a task directory, its parent is the run directory
+    first_workspace = Path(workspace_paths[0]).resolve()
+    run_directory = first_workspace.parent
+    
+    # Validate that this looks like a run directory (contains task directories)
+    if not run_directory.exists():
+        raise ValueError(f"Run directory does not exist: {run_directory}")
+    
+    return run_directory
 
-    file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
-    log_is_empty = not file_handlers
 
-    for handler in file_handlers:
-        base_filename = getattr(handler, "baseFilename", None)
-        if not base_filename:
-            continue
-        log_path = Path(base_filename)
-        if log_path.exists() and log_path.stat().st_size > 0:
-            log_is_empty = False
-            break
-
-    if not log_is_empty:
-        return
-
-    workspace_root = Path(workspace_paths[0]).resolve().parent
-    txt_path = workspace_root / "task_results_report.txt"
-    with open(txt_path, "w") as f:
-        f.write("\n".join(report_lines) + "\n")
-    logger.info(f"Log was empty; wrote fallback text report: {txt_path}")
+def _extract_run_metadata(run_directory: Path) -> Dict[str, str]:
+    """
+    Extract metadata from run directory structure.
+    
+    Returns dict with: timestamp, agent, target_gpu
+    """
+    # Extract timestamp from run directory name: run_20250115_143022 -> 20250115_143022
+    run_dir_name = run_directory.name
+    if run_dir_name.startswith("run_"):
+        timestamp = run_dir_name[4:]  # Remove "run_" prefix
+    else:
+        timestamp = "unknown"
+    
+    # Extract agent and GPU from workspace directory name: workspace_MI300_cursor -> MI300, cursor
+    workspace_dir = run_directory.parent
+    workspace_name = workspace_dir.name
+    parts = workspace_name.split("_")
+    
+    # Pattern: workspace_{GPU}_{agent}
+    if len(parts) >= 3 and parts[0] == "workspace":
+        target_gpu = parts[1]
+        agent = "_".join(parts[2:])  # In case agent name has underscores
+    else:
+        target_gpu = "unknown"
+        agent = "unknown"
+    
+    return {
+        "timestamp": timestamp,
+        "agent": agent,
+        "target_gpu": target_gpu
+    }
 
 
 def _ensure_logger(logger: Optional[logging.Logger]) -> logging.Logger:
@@ -110,15 +147,16 @@ def _normalize_workspace_paths(workspace_paths: Union[str, List[str]]) -> List[s
 
 
 
-def general_log_report(aggregate_result: Dict[str, Any], logger: logging.Logger) -> None:
+def general_log_report(aggregate_result: Dict[str, Any], logger: logging.Logger, run_metadata: Optional[Dict[str, str]] = None) -> None:
     """
     Log a formatted report using the provided logger.
 
     Args:
         aggregate_result: Report dictionary from post_processing()
         logger: Logger instance to use for output
+        run_metadata: Optional dict with timestamp, agent, target_gpu
     """
-    for line in _build_general_report_lines(aggregate_result):
+    for line in _build_general_report_lines(aggregate_result, run_metadata):
         logger.info(line)
 
 
@@ -252,18 +290,42 @@ def general_post_processing(
         'task_details': task_details
     }
 
-    general_log_report(aggregate_result, logger)
-    export_task_results_csv(task_details, normalized_workspace_paths, logger)
-    _write_report_txt_if_log_empty(_build_general_report_lines(aggregate_result), normalized_workspace_paths, logger)
+    # Determine run directory and create reports subdirectory
+    try:
+        run_directory = _get_run_directory(normalized_workspace_paths)
+        run_metadata = _extract_run_metadata(run_directory)
+        
+        # Create reports subdirectory
+        reports_directory = run_directory / "reports"
+        reports_directory.mkdir(parents=True, exist_ok=True)
+        
+        # Write overall_report.txt to reports directory
+        report_lines = _build_general_report_lines(aggregate_result, run_metadata)
+        report_path = reports_directory / "overall_report.txt"
+        with open(report_path, "w") as f:
+            f.write("\n".join(report_lines) + "\n")
+        logger.info(f"Report written to: {report_path}")
+        
+    except Exception as e:
+        logger.warning(f"Could not determine run directory or create reports: {e}")
+        run_metadata = None
+        reports_directory = None
+    
+    # Log report
+    general_log_report(aggregate_result, logger, run_metadata)
+    
+    # Export CSV to reports directory
+    export_task_results_csv(task_details, normalized_workspace_paths, logger, reports_directory)
 
 
 def export_task_results_csv(
     task_details: List[Dict[str, Any]],
     workspace_paths: List[str],
-    logger: logging.Logger
+    logger: logging.Logger,
+    reports_directory: Optional[Path] = None
 ) -> None:
     """
-    Export per-task summary as CSV under the workspace root directory.
+    Export per-task summary as CSV under the reports directory.
 
     CSV columns:
       - Task Name
@@ -276,9 +338,13 @@ def export_task_results_csv(
         logger.warning("CSV export skipped: empty workspace_paths")
         return
 
-    # All task workspaces are expected to be siblings under one workspace root.
-    workspace_root = Path(workspace_paths[0]).resolve().parent
-    csv_path = workspace_root / "task_results_summary.csv"
+    # Use reports directory if provided, otherwise fall back to run directory
+    if reports_directory:
+        csv_path = reports_directory / "overall_summary.csv"
+    else:
+        # Fallback: use run directory (parent of first workspace)
+        run_directory = Path(workspace_paths[0]).resolve().parent
+        csv_path = run_directory / "task_results_summary.csv"
 
     rows: List[Dict[str, Any]] = []
     for task in task_details:
