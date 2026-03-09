@@ -44,6 +44,11 @@ def main() -> None:
 
     # Create log file with target_gpu_model, agent, and timestamp    
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # Create run-level directory for this execution
+    run_directory_name = f"run_{timestamp}"
+    run_directory = workspace_directory / run_directory_name
+    run_directory.mkdir(parents=True, exist_ok=True)
     log_dir = Path(log_directory)
     log_dir.mkdir(parents=True, exist_ok=True)
     log_filename = f"{target_gpu_model}_{agent.value}_{timestamp}.log"
@@ -67,6 +72,7 @@ def main() -> None:
     logger.info(f"Agent: {agent.value}")
     logger.info(f"Target Architecture: {target_gpu_model}")
     logger.info(f"Workspace Directory: {workspace_directory}")
+    logger.info(f"Run Directory: {run_directory}")
 
     # Set PYTORCH_ROCM_ARCH based on target_gpu_model before any task runs
     setup_rocm_env(target_gpu_model, logger)
@@ -101,7 +107,7 @@ def main() -> None:
         
         try:
             # Setup workspace
-            workspace_path = setup_workspace(task_config_dir, workspace_directory, timestamp, logger)
+            workspace_path = setup_workspace(task_config_dir, run_directory, timestamp, logger)
             
             # Load task config for evaluation
             with open(task_config_dir, 'r') as f:

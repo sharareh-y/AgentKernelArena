@@ -64,13 +64,13 @@ def check_environment() -> None:
     pass
 
 
-def setup_workspace(task_config_dir: str, workspace_directory: str, timestamp: str, logger: logging.Logger) -> Path:
+def setup_workspace(task_config_dir: str, run_directory: Path, timestamp: str, logger: logging.Logger) -> Path:
     """
     Setup workspace for agent execution by duplicating task directory.
 
     Args:
         task_config_dir: Path to task's config.yaml
-        workspace_directory: Base workspace directory
+        run_directory: Run-level directory (e.g., workspace_MI300_cursor/run_20250115_143022/)
         timestamp: Timestamp string for unique workspace naming
         logger: Logger instance
 
@@ -82,9 +82,9 @@ def setup_workspace(task_config_dir: str, workspace_directory: str, timestamp: s
     task_folder = task_config_path.parent
     task_folder_name = task_folder.name
 
-    # 2. Create new directory with timestamp suffix under workspace_dir
+    # 2. Create new directory with timestamp suffix under run_directory
     new_folder_name = f"{task_folder_name}_{timestamp}"
-    workspace_path = Path(workspace_directory) / new_folder_name
+    workspace_path = run_directory / new_folder_name
     workspace_path.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Created workspace directory: {workspace_path}")
