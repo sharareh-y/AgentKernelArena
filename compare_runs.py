@@ -93,6 +93,8 @@ def compare_overall(run1_data: Dict[str, Any], run2_data: Dict[str, Any]) -> lis
         ('Correctness Pass Rate', 'correctness_pass_rate', True),
         ('Speedup > 1.0 Rate', 'speedup_gt_1_rate', True),
         ('Average Speedup', 'average_speedup', False),
+        ('Median Speedup', 'median_speedup', False),
+        ('Std Dev Speedup', 'std_dev_speedup', False),
     ]
     
     for label, key, is_percentage in metrics:
@@ -116,10 +118,18 @@ def compare_overall(run1_data: Dict[str, Any], run2_data: Dict[str, Any]) -> lis
         
         # Determine if improvement (green) or regression (red) - for display purposes
         if key in ['average_score', 'compilation_pass_rate', 'correctness_pass_rate', 
-                   'speedup_gt_1_rate', 'average_speedup']:
+                   'speedup_gt_1_rate', 'average_speedup', 'median_speedup']:
             if val2 > val1:
                 indicator = "↑"
             elif val2 < val1:
+                indicator = "↓"
+            else:
+                indicator = "="
+        elif key == 'std_dev_speedup':
+            # Lower std dev is better (more consistent), so reverse the logic
+            if val2 < val1:
+                indicator = "↑"
+            elif val2 > val1:
                 indicator = "↓"
             else:
                 indicator = "="
@@ -173,6 +183,8 @@ def compare_task_types(run1_data: Dict[str, Any], run2_data: Dict[str, Any]) -> 
         # Compare key metrics
         metrics = [
             ('Average Speedup', 'average_speedup', False),
+            ('Median Speedup', 'median_speedup', False),
+            ('Std Dev Speedup', 'std_dev_speedup', False),
             ('Compilation Pass Rate', 'compilation_pass_rate', True),
             ('Correctness Pass Rate', 'correctness_pass_rate', True),
             ('Speedup > 1.0 Rate', 'speedup_gt_1_rate', True),
@@ -203,12 +215,21 @@ def compare_task_types(run1_data: Dict[str, Any], run2_data: Dict[str, Any]) -> 
                 diff_str = format_difference(val1, val2, is_percentage)
             
             if count1 > 0 and count2 > 0:
-                if val2 > val1:
-                    indicator = "↑ (improved)"
-                elif val2 < val1:
-                    indicator = "↓ (regressed)"
+                # For std_dev_speedup, lower is better (more consistent)
+                if key == 'std_dev_speedup':
+                    if val2 < val1:
+                        indicator = "↑ (improved)"
+                    elif val2 > val1:
+                        indicator = "↓ (regressed)"
+                    else:
+                        indicator = "= (same)"
                 else:
-                    indicator = "= (same)"
+                    if val2 > val1:
+                        indicator = "↑ (improved)"
+                    elif val2 < val1:
+                        indicator = "↓ (regressed)"
+                    else:
+                        indicator = "= (same)"
             else:
                 indicator = ""
             

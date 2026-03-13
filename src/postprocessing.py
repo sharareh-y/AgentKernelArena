@@ -4,6 +4,7 @@ import logging
 import csv
 import json
 import sys
+import statistics
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 from collections import defaultdict
@@ -51,6 +52,8 @@ def _build_general_report_lines(
         f"  Speedup > 1.0 Count:   {aggregate_result['speedup_gt_1_count']}/{aggregate_result['total_tasks']}",
         f"  Speedup > 1.0 Rate:    {aggregate_result['speedup_gt_1_rate']:.1f}%",
         f"  Average Speedup:       {aggregate_result['average_speedup']:.2f}x",
+        f"  Median Speedup:       {aggregate_result.get('median_speedup', 0.0):.2f}x",
+        f"  Std Dev Speedup:       {aggregate_result.get('std_dev_speedup', 0.0):.2f}x",
         f"  Valid Speedup Count:   {aggregate_result['valid_speedup_count']}",
     ])
     
@@ -66,6 +69,8 @@ def _build_general_report_lines(
             stats = task_type_breakdown[task_type]
             lines.append(f"  {task_type} ({stats['count']} tasks):")
             lines.append(f"    Average Speedup:     {stats['average_speedup']:.2f}x")
+            lines.append(f"    Median Speedup:      {stats.get('median_speedup', 0.0):.2f}x")
+            lines.append(f"    Std Dev Speedup:     {stats.get('std_dev_speedup', 0.0):.2f}x")
             lines.append(f"    Compilation Pass:     {stats['compilation_pass_count']}/{stats['count']}")
             lines.append(f"    Compilation Pass Rate: {stats['compilation_pass_rate']:.1f}%")
             lines.append(f"    Correctness Pass:     {stats['correctness_pass_count']}/{stats['count']}")
@@ -225,6 +230,21 @@ def _aggregate_by_task_type(task_details: List[Dict[str, Any]]) -> Dict[str, Dic
     result = {}
     for task_type, stats in type_stats.items():
         count = stats['count']
+        speedup_values = stats['speedup_values']
+        
+        # Calculate speedup statistics
+        average_speedup = (sum(speedup_values) / len(speedup_values)) if speedup_values else 0.0
+        
+        try:
+            median_speedup = statistics.median(speedup_values) if speedup_values else 0.0
+        except statistics.StatisticsError:
+            median_speedup = 0.0
+        
+        try:
+            std_dev_speedup = statistics.stdev(speedup_values) if len(speedup_values) > 1 else 0.0
+        except statistics.StatisticsError:
+            std_dev_speedup = 0.0
+        
         result[task_type] = {
             'count': count,
             'total_score': stats['total_score'],
@@ -235,8 +255,10 @@ def _aggregate_by_task_type(task_details: List[Dict[str, Any]]) -> Dict[str, Dic
             'correctness_pass_rate': (stats['correctness_pass_count'] / count * 100) if count > 0 else 0.0,
             'speedup_gt_1_count': stats['speedup_gt_1_count'],
             'speedup_gt_1_rate': (stats['speedup_gt_1_count'] / count * 100) if count > 0 else 0.0,
-            'average_speedup': (sum(stats['speedup_values']) / len(stats['speedup_values'])) if stats['speedup_values'] else 0.0,
-            'valid_speedup_count': len(stats['speedup_values'])
+            'average_speedup': average_speedup,
+            'median_speedup': median_speedup,
+            'std_dev_speedup': std_dev_speedup,
+            'valid_speedup_count': len(speedup_values)
         }
     
     return result
@@ -434,6 +456,17 @@ def general_post_processing(
 
     # Calculate average speedup (only for valid speedups)
     average_speedup = (sum(speedup_values) / len(speedup_values)) if speedup_values else 0.0
+    
+    # Calculate median and standard deviation for speedups
+    try:
+        median_speedup = statistics.median(speedup_values) if speedup_values else 0.0
+    except statistics.StatisticsError:
+        median_speedup = 0.0
+    
+    try:
+        std_dev_speedup = statistics.stdev(speedup_values) if len(speedup_values) > 1 else 0.0
+    except statistics.StatisticsError:
+        std_dev_speedup = 0.0
 
     # Generate aggregate_result
     aggregate_result = {
@@ -451,6 +484,8 @@ def general_post_processing(
         'speedup_gt_1_rate': speedup_gt_1_rate,
 
         'average_speedup': average_speedup,
+        'median_speedup': median_speedup,
+        'std_dev_speedup': std_dev_speedup,
         'valid_speedup_count': len(speedup_values),
 
         'task_details': task_details
@@ -491,6 +526,8 @@ def general_post_processing(
                 'speedup_gt_1_count': aggregate_result['speedup_gt_1_count'],
                 'speedup_gt_1_rate': aggregate_result['speedup_gt_1_rate'],
                 'average_speedup': aggregate_result['average_speedup'],
+                'median_speedup': aggregate_result.get('median_speedup', 0.0),
+                'std_dev_speedup': aggregate_result.get('std_dev_speedup', 0.0),
                 'valid_speedup_count': aggregate_result['valid_speedup_count']
             },
             'task_types': task_type_breakdown
