@@ -290,6 +290,29 @@ def general_log_report(
         logger.info(line)
 
 
+def _collect_all_tasks_from_run(run_directory: Path) -> List[str]:
+    """
+    Collect all task directories from a run directory that have task_result.yaml.
+    
+    Args:
+        run_directory: Run-level directory (e.g., workspace_MI300_cursor/run_20250115_143022/)
+    
+    Returns:
+        List of task directory paths (as strings) that have task_result.yaml
+    """
+    task_paths = []
+    if not run_directory.exists():
+        return task_paths
+    
+    for item in run_directory.iterdir():
+        if item.is_dir():
+            result_file = item / "task_result.yaml"
+            if result_file.exists():
+                task_paths.append(str(item))
+    
+    return sorted(task_paths)
+
+
 def general_post_processing(
     workspace_paths: Union[str, List[str]], logger: Optional[logging.Logger]
 ) -> None:
@@ -314,6 +337,19 @@ def general_post_processing(
     """
     logger = _ensure_logger(logger)
     normalized_workspace_paths = _normalize_workspace_paths(workspace_paths)
+    
+    # If we have workspace paths, try to detect the run directory and collect ALL tasks
+    # This ensures that when resuming, we include previously completed tasks in the report
+    if normalized_workspace_paths:
+        try:
+            run_directory = _get_run_directory(normalized_workspace_paths)
+            # Collect all tasks from the run directory (including previously completed ones)
+            all_task_paths = _collect_all_tasks_from_run(run_directory)
+            if all_task_paths:
+                logger.info(f"Collected {len(all_task_paths)} total tasks from run directory (including previously completed)")
+                normalized_workspace_paths = all_task_paths
+        except Exception as e:
+            logger.warning(f"Could not collect all tasks from run directory: {e}. Using provided workspace paths only.")
     total_tasks = len(normalized_workspace_paths)
     total_score = 0.0
     compilation_pass_count = 0

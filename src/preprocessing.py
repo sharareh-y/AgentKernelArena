@@ -64,6 +64,23 @@ def check_environment() -> None:
     pass
 
 
+def is_task_complete(run_directory: Path, task_folder_name: str, timestamp: str) -> bool:
+    """
+    Check if a task is already completed.
+    
+    Args:
+        run_directory: Run-level directory (e.g., workspace_MI300_cursor/run_20250115_143022/)
+        task_folder_name: Name of the task folder (e.g., "hip2hip/silu" -> "silu")
+        timestamp: Timestamp string used in task directory name
+    
+    Returns:
+        True if task directory exists and task_result.yaml exists, False otherwise
+    """
+    task_dir = run_directory / f"{task_folder_name}_{timestamp}"
+    result_file = task_dir / "task_result.yaml"
+    return result_file.exists()
+
+
 def setup_workspace(task_config_dir: str, run_directory: Path, timestamp: str, logger: logging.Logger) -> Path:
     """
     Setup workspace for agent execution by duplicating task directory.
