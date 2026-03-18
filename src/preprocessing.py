@@ -64,24 +64,31 @@ def check_environment() -> None:
     pass
 
 
-def is_task_complete(run_directory: Path, task_folder_name: str, timestamp: str) -> bool:
+def _sanitize_task_name(task_name: str) -> str:
+    """Convert a task name like 'hip2hip/gpumode/SiLU' to 'hip2hip_gpumode_SiLU' for use in directory names."""
+    return task_name.replace("/", "_")
+
+
+def is_task_complete(run_directory: Path, task_name: str, timestamp: str) -> bool:
     """
     Check if a task is already completed.
-    
+
     Args:
         run_directory: Run-level directory (e.g., workspace_MI300_cursor/run_20250115_143022/)
-        task_folder_name: Name of the task folder (e.g., "hip2hip/silu" -> "silu")
+        task_name: Full task name (e.g., "hip2hip/gpumode/SiLU")
         timestamp: Timestamp string used in task directory name
-    
+
     Returns:
         True if task directory exists and task_result.yaml exists, False otherwise
     """
-    task_dir = run_directory / f"{task_folder_name}_{timestamp}"
+    sanitized = _sanitize_task_name(task_name)
+    task_dir = run_directory / f"{sanitized}_{timestamp}"
     result_file = task_dir / "task_result.yaml"
     return result_file.exists()
 
 
-def setup_workspace(task_config_dir: str, run_directory: Path, timestamp: str, logger: logging.Logger) -> Path:
+def setup_workspace(task_config_dir: str, run_directory: Path, timestamp: str, logger: logging.Logger,
+                    task_name: str = "") -> Path:
     """
     Setup workspace for agent execution by duplicating task directory.
 
@@ -90,6 +97,7 @@ def setup_workspace(task_config_dir: str, run_directory: Path, timestamp: str, l
         run_directory: Run-level directory (e.g., workspace_MI300_cursor/run_20250115_143022/)
         timestamp: Timestamp string for unique workspace naming
         logger: Logger instance
+        task_name: Full task name (e.g., "hip2hip/gpumode/SiLU") for unique directory naming
 
     Returns:
         Path to the created workspace directory
@@ -97,10 +105,13 @@ def setup_workspace(task_config_dir: str, run_directory: Path, timestamp: str, l
     # 1. Get task_folder name (parent directory of task_config_dir)
     task_config_path = Path(task_config_dir)
     task_folder = task_config_path.parent
-    task_folder_name = task_folder.name
 
     # 2. Create new directory with timestamp suffix under run_directory
-    new_folder_name = f"{task_folder_name}_{timestamp}"
+    # Use sanitized full task_name to avoid collisions between tasks with the same leaf name
+    if task_name:
+        new_folder_name = f"{_sanitize_task_name(task_name)}_{timestamp}"
+    else:
+        new_folder_name = f"{task_folder.name}_{timestamp}"
     workspace_path = run_directory / new_folder_name
     workspace_path.mkdir(parents=True, exist_ok=True)
 

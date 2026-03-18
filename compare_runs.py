@@ -201,7 +201,18 @@ def compare_task_types(run1_data: Dict[str, Any], run2_data: Dict[str, Any]) -> 
         for label, key, is_percentage in metrics:
             val1 = stats1.get(key, 0.0)
             val2 = stats2.get(key, 0.0)
-            
+
+            # Format both values first, then override with N/A as needed
+            if is_percentage:
+                fmt1 = f"{val1:.1f}%"
+                fmt2 = f"{val2:.1f}%"
+            elif key == 'average_score':
+                fmt1 = f"{val1:.2f}"
+                fmt2 = f"{val2:.2f}"
+            else:
+                fmt1 = f"{val1:.3f}"
+                fmt2 = f"{val2:.3f}"
+
             if count1 == 0:
                 fmt1 = "N/A"
                 diff_str = "N/A (new)"
@@ -209,16 +220,6 @@ def compare_task_types(run1_data: Dict[str, Any], run2_data: Dict[str, Any]) -> 
                 fmt2 = "N/A"
                 diff_str = "N/A (removed)"
             else:
-                if is_percentage:
-                    fmt1 = f"{val1:.1f}%"
-                    fmt2 = f"{val2:.1f}%"
-                elif key == 'average_score':
-                    fmt1 = f"{val1:.2f}"
-                    fmt2 = f"{val2:.2f}"
-                else:
-                    fmt1 = f"{val1:.3f}"
-                    fmt2 = f"{val2:.3f}"
-                
                 diff_str = format_difference(val1, val2, is_percentage)
             
             if count1 > 0 and count2 > 0:

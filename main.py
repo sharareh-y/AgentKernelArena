@@ -140,12 +140,7 @@ def main() -> None:
         skipped_tasks = []
         
         for task_name, task_config_dir in task_config_dict.items():
-            # Get task folder name (parent directory of task_config_dir)
-            task_config_path = Path(task_config_dir)
-            task_folder = task_config_path.parent
-            task_folder_name = task_folder.name
-            
-            if is_task_complete(run_directory, task_folder_name, timestamp):
+            if is_task_complete(run_directory, task_name, timestamp):
                 skipped_tasks.append(task_name)
                 logger.info(f"Skipping completed task: {task_name}")
             else:
@@ -174,7 +169,7 @@ def main() -> None:
         
         try:
             # Setup workspace
-            workspace_path = setup_workspace(task_config_dir, run_directory, timestamp, logger)
+            workspace_path = setup_workspace(task_config_dir, run_directory, timestamp, logger, task_name=task_name)
             
             # Load task config for evaluation
             with open(task_config_dir, 'r') as f:
